@@ -2904,10 +2904,76 @@ TEST_P(HttpFilterTestParam, LoggingInfo) {
   Filters::Common::ExtAuthz::Response response{};
   response.status = Filters::Common::ExtAuthz::CheckStatus::OK;
 
+  auto bytes_meter = std::make_shared<StreamInfo::BytesMeter>();
+  bytes_meter->addWireBytesSent(1);
+  bytes_meter->addWireBytesReceived(2);
+  decoder_filter_callbacks_.stream_info_.upstream_bytes_meter_ = std::move(bytes_meter);
+
+  auto upstream_host = std::make_shared<NiceMock<Upstream::MockHostDescription>>();
+  auto upstream_info = std::make_shared<NiceMock<StreamInfo::MockUpstreamInfo>>();
+  upstream_info->upstream_host_ = std::move(upstream_host);
+  decoder_filter_callbacks_.stream_info_.upstream_info_ = std::move(upstream_info);
+
+  auto info = std::make_shared<NiceMock<Upstream::MockClusterInfo>>();
+  decoder_filter_callbacks_.stream_info_.upstream_cluster_info_ = info;
+
   EXPECT_CALL(*client_, check(_, _, _, _))
       .WillOnce(Invoke([&](Filters::Common::ExtAuthz::RequestCallbacks& callbacks,
                            const envoy::service::auth::v3::CheckRequest&, Tracing::Span&,
                            const StreamInfo::StreamInfo&) -> void {
+        decoder_filter_callbacks_.dispatcher_.globalTimeSystem().advanceTimeWait(
+            std::chrono::milliseconds(10));
+        callbacks.onComplete(std::make_unique<Filters::Common::ExtAuthz::Response>(response));
+      }));
+  EXPECT_CALL(decoder_filter_callbacks_, continueDecoding()).Times(0);
+  EXPECT_EQ(Http::FilterHeadersStatus::Continue, filter_->decodeHeaders(request_headers_, false));
+  EXPECT_EQ(Http::FilterDataStatus::Continue, filter_->decodeData(data_, false));
+  EXPECT_EQ(Http::FilterTrailersStatus::Continue, filter_->decodeTrailers(request_trailers_));
+
+  auto filter_state = decoder_filter_callbacks_.streamInfo().filterState();
+  ASSERT_TRUE(filter_state->hasData<ExtAuthzLoggingInfo>(filter_config_name));
+
+  auto logging_info = filter_state->getDataReadOnly<ExtAuthzLoggingInfo>(filter_config_name);
+  EXPECT_EQ(logging_info->latency().count(), 10000);
+  ASSERT_TRUE(logging_info->filterMetadata().fields().contains("foo"));
+  EXPECT_EQ(logging_info->filterMetadata().fields().at("foo").string_value(), "bar");
+
+  if (std::get<1>(GetParam())) {
+    // HTTP client will not fill in the bytes meter.
+    EXPECT_FALSE(logging_info->bytesSent());
+    EXPECT_FALSE(logging_info->bytesReceived());
+    EXPECT_EQ(logging_info->upstreamHost(), nullptr);
+    EXPECT_EQ(logging_info->clusterInfo(), nullptr);
+  } else {
+    ASSERT_TRUE(logging_info->bytesSent());
+    EXPECT_EQ(*logging_info->bytesSent(), 1);
+    ASSERT_TRUE(logging_info->bytesReceived());
+    EXPECT_EQ(*logging_info->bytesReceived(), 2);
+    EXPECT_NE(logging_info->upstreamHost(), nullptr);
+    EXPECT_NE(logging_info->clusterInfo(), nullptr);
+  }
+}
+
+TEST_P(HttpFilterTestParam, LoggingInfoNullHandling) {
+  InSequence s;
+
+  prepareCheck();
+
+  Filters::Common::ExtAuthz::Response response{};
+  response.status = Filters::Common::ExtAuthz::CheckStatus::OK;
+
+  // These being null will result in logging_info's upstreamHost(), bytesSent(), bytesReceived(), &
+  // clusterInfo() to be unset (nullptr / nullopt).
+  decoder_filter_callbacks_.stream_info_.upstream_bytes_meter_ = nullptr;
+  decoder_filter_callbacks_.stream_info_.upstream_info_ = nullptr;
+  decoder_filter_callbacks_.stream_info_.upstream_cluster_info_ = nullptr;
+
+  EXPECT_CALL(*client_, check(_, _, _, _))
+      .WillOnce(Invoke([&](Filters::Common::ExtAuthz::RequestCallbacks& callbacks,
+                           const envoy::service::auth::v3::CheckRequest&, Tracing::Span&,
+                           const StreamInfo::StreamInfo&) -> void {
+        decoder_filter_callbacks_.dispatcher_.globalTimeSystem().advanceTimeWait(
+            std::chrono::milliseconds(10));
         callbacks.onComplete(std::make_unique<Filters::Common::ExtAuthz::Response>(response));
       }));
   EXPECT_CALL(decoder_filter_callbacks_, continueDecoding()).Times(0);
@@ -2921,6 +2987,14 @@ TEST_P(HttpFilterTestParam, LoggingInfo) {
   auto logging_info = filter_state->getDataReadOnly<ExtAuthzLoggingInfo>(filter_config_name);
   ASSERT_TRUE(logging_info->filterMetadata().fields().contains("foo"));
   EXPECT_EQ(logging_info->filterMetadata().fields().at("foo").string_value(), "bar");
+
+  // Latency is unaffected.
+  EXPECT_EQ(logging_info->latency().count(), 10000);
+  // Nothing else will be set regardless of client.
+  EXPECT_EQ(logging_info->upstreamHost(), nullptr);
+  EXPECT_EQ(logging_info->clusterInfo(), nullptr);
+  EXPECT_FALSE(logging_info->bytesSent());
+  EXPECT_FALSE(logging_info->bytesReceived());
 }
 
 // Test that an synchronous denied response from the authorization service passing additional HTTP

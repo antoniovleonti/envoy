@@ -76,6 +76,7 @@ FilterConfig::FilterConfig(const envoy::extensions::filters::http::ext_authz::v3
 
       encode_raw_headers_(config.encode_raw_headers()),
 
+      client_is_envoy_grpc_(config.has_grpc_service() && config.grpc_service().has_envoy_grpc()),
       status_on_error_(toErrorCode(config.status_on_error().code())),
       validate_mutations_(config.validate_mutations()), scope_(scope),
       decoder_header_mutation_checker_(
@@ -791,6 +792,25 @@ bool Filter::isBufferFull(uint64_t num_bytes_processing) const {
 }
 
 void Filter::setLoggingInfo() {
+  std::chrono::microseconds latency = std::chrono::duration_cast<std::chrono::microseconds>(
+      decoder_callbacks_->dispatcher().timeSource().monotonicTime() - start_time_.value());
+
+  absl::optional<uint64_t> bytes_sent, bytes_received;
+  absl::optional<Upstream::ClusterInfoConstSharedPtr> cluster_info;
+  Upstream::HostDescriptionConstSharedPtr upstream_host;
+
+  if (config_->clientIsEnvoyGrpc()) {
+    const auto& upstream_meter = decoder_callbacks_->streamInfo().getUpstreamBytesMeter();
+    if (upstream_meter != nullptr) {
+      bytes_sent = upstream_meter->wireBytesSent();
+      bytes_received = upstream_meter->wireBytesReceived();
+    }
+    if (decoder_callbacks_->streamInfo().upstreamInfo() != nullptr) {
+      upstream_host = decoder_callbacks_->streamInfo().upstreamInfo()->upstreamHost();
+    }
+    cluster_info = decoder_callbacks_->streamInfo().upstreamClusterInfo();
+  }
+
   const Envoy::StreamInfo::FilterStateSharedPtr& filter_state =
       decoder_callbacks_->streamInfo().filterState();
   if (!filter_state->hasData<ExtAuthzLoggingInfo>(decoder_callbacks_->filterConfigName())) {

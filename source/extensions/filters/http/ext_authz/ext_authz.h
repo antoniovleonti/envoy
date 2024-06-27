@@ -93,6 +93,8 @@ public:
 
   bool headersAsBytes() const { return encode_raw_headers_; }
 
+  bool clientIsEnvoyGrpc() const { return client_is_envoy_grpc_; }
+
   Filters::Common::MutationRules::CheckResult
   checkDecoderHeaderMutation(const Filters::Common::MutationRules::CheckOperation& operation,
                              const Http::LowerCaseString& key, absl::string_view value) const {
@@ -196,6 +198,7 @@ private:
   const uint32_t max_request_bytes_;
   const bool pack_as_bytes_;
   const bool encode_raw_headers_;
+  const bool client_is_envoy_grpc_;
   const Http::Code status_on_error_;
   const bool validate_mutations_;
   Stats::Scope& scope_;
@@ -372,6 +375,7 @@ private:
   Upstream::ClusterInfoConstSharedPtr cluster_;
   // The stats for the filter.
   ExtAuthzFilterStats stats_;
+  ExtAuthzLoggingInfo* logging_info_;
 
   // This is used to hold the final configs after we merge them with per-route configs.
   bool allow_partial_message_{};

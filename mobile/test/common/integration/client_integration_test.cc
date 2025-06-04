@@ -1200,7 +1200,7 @@ TEST_P(ClientIntegrationTest, CaseSensitive) {
   HttpTestUtility::addDefaultHeaders(*headers);
   headers->setHost(fake_upstreams_[0]->localAddress()->asStringView());
   Http::StatefulHeaderKeyFormatter& formatter = headers->formatter().value();
-  formatter.processKey("FoO");
+  formatter.processHeader("FoO", "bar");
   headers->addCopy(Http::LowerCaseString("FoO"), "bar");
 
   EnvoyStreamCallbacks stream_callbacks = createDefaultStreamCallbacks();

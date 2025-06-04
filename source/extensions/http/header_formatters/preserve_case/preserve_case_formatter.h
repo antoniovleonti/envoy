@@ -22,10 +22,11 @@ public:
           PreserveCaseFormatterConfig::FormatterTypeOnEnvoyHeaders formatter_type_on_envoy_headers);
 
   std::string format(absl::string_view key) const override;
-  void processKey(absl::string_view key) override;
+  void processHeader(absl::string_view key, absl::string_view) override;
   void setReasonPhrase(absl::string_view reason_phrase) override;
   absl::string_view getReasonPhrase() const override;
   Envoy::Http::HeaderKeyFormatterOptConstRef formatterOnEnvoyHeaders() const;
+  std::vector<std::pair<std::string, std::string>> headers() const override;
 
 private:
   StringUtil::CaseUnorderedSet original_header_keys_;

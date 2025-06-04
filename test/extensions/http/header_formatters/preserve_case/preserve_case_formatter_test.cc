@@ -14,9 +14,9 @@ TEST(PreserveCaseFormatterTest, All) {
   PreserveCaseHeaderFormatter formatter(false,
                                         envoy::extensions::http::header_formatters::preserve_case::
                                             v3::PreserveCaseFormatterConfig::DEFAULT);
-  formatter.processKey("Foo");
-  formatter.processKey("Bar");
-  formatter.processKey("BAR");
+  formatter.processHeader("Foo", "Foo-value");
+  formatter.processHeader("Bar", "Bar-value");
+  formatter.processHeader("BAR", "BAR-value");
 
   EXPECT_EQ("Foo", formatter.format("foo"));
   EXPECT_EQ("Foo", formatter.format("Foo"));
@@ -50,9 +50,9 @@ TEST(PreserveCaseFormatterTest, ProperCaseFormatterOnEnvoyHeadersEnabled) {
   PreserveCaseHeaderFormatter formatter(false,
                                         envoy::extensions::http::header_formatters::preserve_case::
                                             v3::PreserveCaseFormatterConfig::PROPER_CASE);
-  formatter.processKey("Foo");
-  formatter.processKey("Bar");
-  formatter.processKey("BAR");
+  formatter.processHeader("Foo", "Foo-value");
+  formatter.processHeader("Bar", "Bar-value");
+  formatter.processHeader("BAR", "BAR-value");
 
   EXPECT_EQ("Foo", formatter.format("foo"));
   EXPECT_EQ("Foo", formatter.format("Foo"));
@@ -70,9 +70,9 @@ TEST(PreserveCaseFormatterTest, DefaultFormatterOnEnvoyHeadersEnabled) {
   PreserveCaseHeaderFormatter formatter(false,
                                         envoy::extensions::http::header_formatters::preserve_case::
                                             v3::PreserveCaseFormatterConfig::DEFAULT);
-  formatter.processKey("Foo");
-  formatter.processKey("Bar");
-  formatter.processKey("BAR");
+  formatter.processHeader("Foo", "Foo-value");
+  formatter.processHeader("Bar", "Bar-value");
+  formatter.processHeader("BAR", "BAR-value");
 
   EXPECT_EQ("Foo", formatter.format("foo"));
   EXPECT_EQ("Foo", formatter.format("Foo"));

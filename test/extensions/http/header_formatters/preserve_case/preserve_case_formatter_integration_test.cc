@@ -44,7 +44,7 @@ public:
 
   Http::FilterHeadersStatus decodeHeaders(Http::RequestHeaderMap& headers, bool) override {
     headers.addCopy(Http::LowerCaseString("request-header"), "request-header-value");
-    headers.formatter()->processKey("Request-Header");
+    headers.formatter()->processHeader("Request-Header", "request-header-value");
 
     headers.addCopy(Http::LowerCaseString("x-forwarded-for"), "x-forwarded-for-value");
 
@@ -52,7 +52,7 @@ public:
   }
   Http::FilterHeadersStatus encodeHeaders(Http::ResponseHeaderMap& headers, bool) override {
     headers.addCopy(Http::LowerCaseString("response-header"), "response-header-value");
-    headers.formatter()->processKey("Response-Header");
+    headers.formatter()->processHeader("Response-Header", "request-header-value");
 
     headers.addCopy(Http::LowerCaseString("hello-header"), "hello-header-value");
 

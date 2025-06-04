@@ -32,7 +32,7 @@ public:
   /**
    * Called for each header key received by the codec.
    */
-  virtual void processKey(absl::string_view key) PURE;
+  virtual void processHeader(absl::string_view key, absl::string_view value) PURE;
 
   /**
    * Called to save received reason phrase
@@ -43,6 +43,11 @@ public:
    * Called to get saved reason phrase
    */
   virtual absl::string_view getReasonPhrase() const PURE;
+
+  /**
+   * Return a list of formatted header key value pairs.
+   */
+  virtual std::vector<std::pair<std::string, std::string>> headers() const PURE;
 };
 
 using StatefulHeaderKeyFormatterPtr = std::unique_ptr<StatefulHeaderKeyFormatter>;

@@ -564,7 +564,8 @@ Status ConnectionImpl::completeCurrentHeader() {
     // converting to lower case.
     auto formatter = headers_or_trailers.formatter();
     if (formatter.has_value()) {
-      formatter->processKey(current_header_field_.getStringView());
+      formatter->processHeader(current_header_field_.getStringView(),
+                               current_header_value_.getStringView());
     }
     current_header_field_.inlineTransform([](char c) { return absl::ascii_tolower(c); });
 

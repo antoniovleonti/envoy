@@ -69,7 +69,7 @@ TEST(PreserveCaseFormatterFactoryConfigTest, PreserveCaseFormatterFactoryConfig_
   auto formatter_factory = factory->createFromProto(*header_formatter_config);
   auto formatter = formatter_factory->create();
 
-  formatter->processKey("Foo");
+  formatter->processHeader("Foo", "bar");
   EXPECT_EQ("Foo", formatter->format("foo"));
   EXPECT_EQ("Foo", formatter->format("Foo"));
   EXPECT_EQ("hello-world", formatter->format("hello-world"));
@@ -93,7 +93,7 @@ TEST(PreserveCaseFormatterFactoryConfigTest, PreserveCaseFormatterFactoryConfig_
   auto formatter_factory = factory->createFromProto(*header_formatter_config);
   auto formatter = formatter_factory->create();
 
-  formatter->processKey("Foo");
+  formatter->processHeader("Foo", "bar");
   EXPECT_EQ("Foo", formatter->format("foo"));
   EXPECT_EQ("Foo", formatter->format("Foo"));
   EXPECT_EQ("Hello-World", formatter->format("hello-world"));

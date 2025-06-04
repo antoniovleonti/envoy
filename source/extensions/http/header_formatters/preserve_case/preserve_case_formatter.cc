@@ -40,7 +40,7 @@ std::string PreserveCaseHeaderFormatter::format(absl::string_view key) const {
   }
 }
 
-void PreserveCaseHeaderFormatter::processKey(absl::string_view key) {
+void PreserveCaseHeaderFormatter::processHeader(absl::string_view key, absl::string_view) {
   // Note: This implementation will only remember the first instance of a particular header key.
   // So for example "Foo" followed by "foo" will both be serialized as "Foo" on the way out. We
   // could do better here but it's unlikely it's worth it and we can see if anyone complains about
@@ -52,9 +52,17 @@ void PreserveCaseHeaderFormatter::setReasonPhrase(absl::string_view reason_phras
   if (forward_reason_phrase_) {
     reason_phrase_ = std::string(reason_phrase);
   }
-};
+}
 
-absl::string_view PreserveCaseHeaderFormatter::getReasonPhrase() const { return {reason_phrase_}; };
+absl::string_view PreserveCaseHeaderFormatter::getReasonPhrase() const { return {reason_phrase_}; }
+
+std::vector<std::pair<std::string, std::string>> PreserveCaseHeaderFormatter::headers() const {
+  std::vector<std::pair<std::string, std::string>> headers;
+  for (auto& key : original_header_keys_) {
+    headers.emplace_back(key, "");
+  }
+  return headers;
+}
 
 Envoy::Http::HeaderKeyFormatterOptConstRef
 PreserveCaseHeaderFormatter::formatterOnEnvoyHeaders() const {

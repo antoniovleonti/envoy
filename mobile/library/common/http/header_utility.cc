@@ -19,10 +19,10 @@ void toEnvoyHeaders(HeaderMap& envoy_result_headers, envoy_headers headers) {
   Envoy::Http::StatefulHeaderKeyFormatter& formatter = envoy_result_headers.formatter().value();
   for (envoy_map_size_t i = 0; i < headers.length; i++) {
     std::string key = Bridge::Utility::copyToString(headers.entries[i].key);
+    std::string value = Bridge::Utility::copyToString(headers.entries[i].value);
     // Make sure the formatter knows the original case.
-    formatter.processKey(key);
-    envoy_result_headers.addCopy(LowerCaseString(key),
-                                 Bridge::Utility::copyToString(headers.entries[i].value));
+    formatter.processHeader(key, value);
+    envoy_result_headers.addCopy(LowerCaseString(key), value);
   }
   // The C envoy_headers struct can be released now because the headers have been copied.
   release_envoy_headers(headers);

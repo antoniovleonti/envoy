@@ -370,5 +370,9 @@ new_features:
     flag to HTTP Dynamic Forward Proxy filter. When enabled, the filter will check for ``envoy.upstream.dynamic_host`` and
     ``envoy.upstream.dynamic_port`` filter state values before using the HTTP Host header, providing consistency with SNI
     and UDP DFP filters. When disabled (default), maintains backward compatibility by using the HTTP Host header directly.
+- area: overload
+  change: |
+    Added load shed point ``envoy.load_shed_points.http2_server_go_away_and_close_on_dispatch`` that
+    closes connections before creating codec if Envoy is under pressure, typically memory.
 
 deprecated:

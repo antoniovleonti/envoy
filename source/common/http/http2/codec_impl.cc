@@ -2289,7 +2289,7 @@ int ServerConnectionImpl::onHeader(int32_t stream_id, HeaderString&& name, Heade
 Http::Status ServerConnectionImpl::dispatch(Buffer::Instance& data) {
   // Make sure downstream outbound queue was not flooded by the upstream frames.
   RETURN_IF_ERROR(protocol_constraints_.checkOutboundFrameLimits());
-  if (should_send_go_away_and_close_on_dispatch_ != nullptr &&
+  if (should_send_go_away_and_close_on_dispatch_ != nullptr && !sent_go_away_on_dispatch_ &&
       should_send_go_away_and_close_on_dispatch_->shouldShedLoad()) {
     ConnectionImpl::goAway();
     return envoyOverloadError(

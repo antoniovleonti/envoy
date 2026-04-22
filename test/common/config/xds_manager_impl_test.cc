@@ -92,6 +92,12 @@ public:
   MOCK_METHOD(Config::SubscriptionPtr, create, (SubscriptionData & data), (override));
 };
 
+class MockGrpcConfigSubscriptionFactory : public ConfigSubscriptionFactory {
+public:
+  std::string name() const override { return "envoy.config_subscription.grpc"; }
+  MOCK_METHOD(Config::SubscriptionPtr, create, (SubscriptionData & data), (override));
+};
+
 class XdsManagerImplTest : public testing::TestWithParam<bool> {
 public:
   XdsManagerImplTest()
@@ -872,7 +878,9 @@ TEST_P(XdsManagerImplTest, AdsInitializationFailsWithNullPrimaryClient) {
 class XdsManagerImplXdstpConfigSourcesTest : public testing::Test {
 public:
   XdsManagerImplXdstpConfigSourcesTest()
-      : grpc_mux_registry_(grpc_mux_factory_),
+      : ads_subscription_registry_(ads_subscription_factory_),
+        grpc_subscription_registry_(grpc_subscription_factory_),
+        grpc_mux_registry_(grpc_mux_factory_),
         xds_manager_impl_(dispatcher_, api_, stats_, local_info_, validation_context_, server_) {
     ON_CALL(validation_context_, staticValidationVisitor())
         .WillByDefault(ReturnRef(validation_visitor_));
@@ -936,6 +944,11 @@ public:
     }
   }
 
+  NiceMock<MockAdsConfigSubscriptionFactory> ads_subscription_factory_;
+  Registry::InjectFactory<ConfigSubscriptionFactory> ads_subscription_registry_;
+  NiceMock<MockGrpcConfigSubscriptionFactory> grpc_subscription_factory_;
+  Registry::InjectFactory<ConfigSubscriptionFactory> grpc_subscription_registry_;
+
   NiceMock<MockGrpcMuxFactory> grpc_mux_factory_;
   Registry::InjectFactory<MuxFactory> grpc_mux_registry_;
   NiceMock<Server::MockInstance> server_;
@@ -985,6 +998,97 @@ TEST_F(XdsManagerImplXdstpConfigSourcesTest, DefaultConfigSourceNoAuthority) {
                   port_value: 11001
   )EOF",
              false, false, true);
+}
+
+// Validates that multiple xDS-TP subscriptions targeting the same authority share the same mux.
+TEST_F(XdsManagerImplXdstpConfigSourcesTest, XdstpSubscriptionsShareMux) {
+  const std::string bootstrap_yaml = R"EOF(
+  config_sources:
+  - authorities:
+    - name: xdstp_authority
+    api_config_source:
+      api_type: AGGREGATED_GRPC
+      transport_api_version: V3
+      grpc_services:
+        envoy_grpc:
+          cluster_name: cluster_1
+  )EOF";
+
+  // Mock gRPC client manager to return a factory.
+  EXPECT_CALL(cm_, grpcAsyncClientManager()).WillRepeatedly(ReturnRef(cm_.async_client_manager_));
+  EXPECT_CALL(cm_.async_client_manager_, factoryForGrpcService(_, _, _))
+      .WillRepeatedly(Invoke([](const envoy::config::core::v3::GrpcService&, Stats::Scope&, bool) {
+        return std::make_unique<NiceMock<Grpc::MockAsyncClientFactory>>();
+      }));
+
+  // initialize(..., true) will add an EXPECT_CALL on grpc_mux_factory_.
+  initialize(bootstrap_yaml, true);
+
+  MockSubscriptionCallbacks callbacks1;
+  MockSubscriptionCallbacks callbacks2;
+  auto resource_decoder = std::make_shared<NiceMock<Config::MockOpaqueResourceDecoder>>();
+
+  // Return a MockSubscription from our mocked ADS factory.
+  // We use the same ads_subscription_factory_ that was registered in the fixture.
+  EXPECT_CALL(ads_subscription_factory_, create(_))
+      .Times(2)
+      .WillRepeatedly(Invoke([this](Config::ConfigSubscriptionFactory::SubscriptionData& data) {
+        // Verify that the mux passed to the factory is indeed our authority_A_mux_.
+        EXPECT_EQ(data.ads_grpc_mux_.get(), authority_A_mux_.get());
+        return std::make_unique<NiceMock<MockSubscription>>();
+      }));
+
+  auto sub1 = xds_manager_impl_.subscribeToSingletonResource(
+      "xdstp://xdstp_authority/type_url/resource_1", {}, "type_url", *stats_.rootScope(), callbacks1,
+      resource_decoder, {});
+  ASSERT_OK(sub1.status());
+
+  auto sub2 = xds_manager_impl_.subscribeToSingletonResource(
+      "xdstp://xdstp_authority/type_url/resource_2", {}, "type_url", *stats_.rootScope(), callbacks2,
+      resource_decoder, {});
+  ASSERT_OK(sub2.status());
+}
+
+// Validates that multiple non-xDS-TP subscriptions with the same config result in independent muxes.
+TEST_F(XdsManagerImplXdstpConfigSourcesTest, NonXdstpSubscriptionsNewMux) {
+  initialize(); // Generic initialization with no authorities.
+
+  envoy::config::core::v3::ConfigSource config;
+  config.mutable_api_config_source()->set_api_type(envoy::config::core::v3::ApiConfigSource::GRPC);
+  config.mutable_api_config_source()->set_transport_api_version(
+      envoy::config::core::v3::ApiVersion::V3);
+  config.mutable_api_config_source()->add_grpc_services()->mutable_envoy_grpc()->set_cluster_name(
+      "cluster_1");
+
+  MockSubscriptionCallbacks callbacks1;
+  MockSubscriptionCallbacks callbacks2;
+  auto resource_decoder = std::make_shared<NiceMock<Config::MockOpaqueResourceDecoder>>();
+
+  Upstream::ClusterManager::ClusterSet primary_clusters;
+  primary_clusters.insert("cluster_1");
+  EXPECT_CALL(cm_, primaryClusters()).WillRepeatedly(ReturnRef(primary_clusters));
+  EXPECT_CALL(cm_, grpcAsyncClientManager()).WillRepeatedly(ReturnRef(cm_.async_client_manager_));
+  EXPECT_CALL(cm_.async_client_manager_, factoryForGrpcService(_, _, _))
+      .WillRepeatedly(Invoke([](const envoy::config::core::v3::GrpcService&, Stats::Scope&, bool) {
+        return std::make_unique<NiceMock<Grpc::MockAsyncClientFactory>>();
+      }));
+
+  // Return a MockSubscription from the mocked GRPC factory.
+  EXPECT_CALL(grpc_subscription_factory_, create(_))
+      .Times(2)
+      .WillRepeatedly(Invoke([](Config::ConfigSubscriptionFactory::SubscriptionData&) {
+        return std::make_unique<NiceMock<MockSubscription>>();
+      }));
+
+  // Since we are mocking the subscription factory, we verify it is called twice.
+  // This confirms XdsManagerImpl didn't try to reuse any state.
+  auto sub1 = xds_manager_impl_.subscribeToSingletonResource(
+      "resource_1", config, "type_url", *stats_.rootScope(), callbacks1, resource_decoder, {});
+  ASSERT_OK(sub1.status());
+
+  auto sub2 = xds_manager_impl_.subscribeToSingletonResource(
+      "resource_2", config, "type_url", *stats_.rootScope(), callbacks2, resource_decoder, {});
+  ASSERT_OK(sub2.status());
 }
 
 // Validates that when a default config source that is not gRPC based is

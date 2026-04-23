@@ -1039,17 +1039,18 @@ TEST_F(XdsManagerImplXdstpConfigSourcesTest, XdstpSubscriptionsShareMux) {
       }));
 
   auto sub1 = xds_manager_impl_.subscribeToSingletonResource(
-      "xdstp://xdstp_authority/type_url/resource_1", {}, "type_url", *stats_.rootScope(), callbacks1,
-      resource_decoder, {});
+      "xdstp://xdstp_authority/type_url/resource_1", {}, "type_url", *stats_.rootScope(),
+      callbacks1, resource_decoder, {});
   ASSERT_OK(sub1.status());
 
   auto sub2 = xds_manager_impl_.subscribeToSingletonResource(
-      "xdstp://xdstp_authority/type_url/resource_2", {}, "type_url", *stats_.rootScope(), callbacks2,
-      resource_decoder, {});
+      "xdstp://xdstp_authority/type_url/resource_2", {}, "type_url", *stats_.rootScope(),
+      callbacks2, resource_decoder, {});
   ASSERT_OK(sub2.status());
 }
 
-// Validates that multiple non-xDS-TP subscriptions with the same config result in independent muxes.
+// Validates that multiple non-xDS-TP subscriptions with the same config result in independent
+// muxes.
 TEST_F(XdsManagerImplXdstpConfigSourcesTest, NonXdstpSubscriptionsNewMux) {
   initialize(); // Generic initialization with no authorities.
 

@@ -1106,6 +1106,7 @@ mutex
 mutexes
 mux
 muxed
+muxes
 mysql
 namelen
 nameserver

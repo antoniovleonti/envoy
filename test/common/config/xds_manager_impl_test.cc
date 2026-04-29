@@ -1076,8 +1076,7 @@ TEST_F(XdsManagerImplXdstpConfigSourcesTest, NonXdstpSubscriptionsNewMux) {
 
   // Return a MockSubscription from the mocked GRPC factory.
   EXPECT_CALL(grpc_subscription_factory_, create(_))
-      .Times(2)
-      .WillRepeatedly(Invoke([](Config::ConfigSubscriptionFactory::SubscriptionData&) {
+      .WillOnce(Invoke([](Config::ConfigSubscriptionFactory::SubscriptionData&) {
         return std::make_unique<NiceMock<MockSubscription>>();
       }));
 
@@ -1086,6 +1085,12 @@ TEST_F(XdsManagerImplXdstpConfigSourcesTest, NonXdstpSubscriptionsNewMux) {
   auto sub1 = xds_manager_impl_.subscribeToSingletonResource(
       "resource_1", config, "type_url", *stats_.rootScope(), callbacks1, resource_decoder, {});
   ASSERT_OK(sub1.status());
+
+  // Second subscription creates a brand new mux. There is no caching / reuse.
+  EXPECT_CALL(grpc_subscription_factory_, create(_))
+      .WillOnce(Invoke([](Config::ConfigSubscriptionFactory::SubscriptionData&) {
+        return std::make_unique<NiceMock<MockSubscription>>();
+      }));
 
   auto sub2 = xds_manager_impl_.subscribeToSingletonResource(
       "resource_2", config, "type_url", *stats_.rootScope(), callbacks2, resource_decoder, {});

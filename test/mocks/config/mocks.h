@@ -73,6 +73,11 @@ public:
               (const absl::flat_hash_set<std::string>& add_these_names));
 };
 
+class MockSingletonSubscription : public SingletonSubscription {
+public:
+  MOCK_METHOD(void, start, ());
+};
+
 class MockSubscriptionFactory : public SubscriptionFactory {
 public:
   MockSubscriptionFactory();
@@ -83,9 +88,19 @@ public:
                Stats::Scope& scope, SubscriptionCallbacks& callbacks,
                OpaqueResourceDecoderSharedPtr resource_decoder,
                const SubscriptionOptions& options));
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<SingletonSubscription>>, subscriptionFromConfigSource,
+              (const envoy::config::core::v3::ConfigSource& config, absl::string_view type_url,
+               Stats::Scope& scope, absl::string_view resource_name, SingletonSubscriptionCallbacks& callbacks,
+               OpaqueResourceDecoderSharedPtr resource_decoder,
+               const SubscriptionOptions& options));
   MOCK_METHOD(absl::StatusOr<SubscriptionPtr>, subscriptionOverAdsGrpcMux,
               (GrpcMuxSharedPtr & ads_grpc_mux, const envoy::config::core::v3::ConfigSource& config,
                absl::string_view type_url, Stats::Scope& scope, SubscriptionCallbacks& callbacks,
+               OpaqueResourceDecoderSharedPtr resource_decoder,
+               const SubscriptionOptions& options));
+  MOCK_METHOD(absl::StatusOr<std::unique_ptr<SingletonSubscription>>, subscriptionOverAdsGrpcMux,
+              (GrpcMuxSharedPtr& ads_grpc_mux, const envoy::config::core::v3::ConfigSource& config,
+               absl::string_view type_url, Stats::Scope& scope, absl::string_view resource_name, SingletonSubscriptionCallbacks& callbacks,
                OpaqueResourceDecoderSharedPtr resource_decoder,
                const SubscriptionOptions& options));
   MOCK_METHOD(absl::StatusOr<SubscriptionPtr>, collectionSubscriptionFromUrl,
@@ -97,6 +112,8 @@ public:
 
   MockSubscription* subscription_{};
   SubscriptionCallbacks* callbacks_{};
+  MockSingletonSubscription* singleton_subscription_{};
+  SingletonSubscriptionCallbacks* singleton_callbacks_{};
 };
 
 class MockGrpcMuxWatch : public GrpcMuxWatch {

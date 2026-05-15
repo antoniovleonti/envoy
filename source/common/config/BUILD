@@ -186,6 +186,7 @@ envoy_cc_library(
     hdrs = ["subscription_factory_impl.h"],
     deps = [
         ":custom_config_validators_lib",
+        ":singleton_subscription_adapter_lib",
         ":type_to_endpoint_lib",
         ":utility_lib",
         ":xds_resource_lib",

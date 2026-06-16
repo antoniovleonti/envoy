@@ -52,3 +52,11 @@ envoy_cc_test(
         "//test/test_common:simulated_time_system_lib",
     ],
 )
+
+envoy_cc_test(
+    name = "loop_latency_tracker_test",
+    srcs = ["loop_latency_tracker_test.cc"],
+    deps = [
+        "//source/common/event:loop_latency_tracker_lib",
+    ],
+)

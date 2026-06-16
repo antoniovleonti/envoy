@@ -7,6 +7,7 @@
 
 #include "source/common/common/thread.h"
 #include "source/common/event/dispatcher_impl.h"
+#include "source/common/event/loop_latency_tracker.h"
 
 namespace Envoy {
 namespace Api {
@@ -30,6 +31,14 @@ Impl::allocateDispatcher(const std::string& name,
                          const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) {
   return std::make_unique<Event::DispatcherImpl>(name, *this, time_system_, scaled_timer_factory,
                                                  watermark_factory_);
+}
+
+Event::DispatcherPtr
+Impl::allocateWorkerDispatcher(const std::string& name,
+                               const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) {
+  return std::make_unique<Event::DispatcherImpl>(name, *this, time_system_, scaled_timer_factory,
+                                                 watermark_factory_,
+                                                 std::make_unique<Event::LoopLatencyTracker>(name));
 }
 
 Event::DispatcherPtr Impl::allocateDispatcher(const std::string& name,

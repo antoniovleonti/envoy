@@ -46,6 +46,15 @@ public:
                      const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) PURE;
 
   /**
+   * Allocate a dispatcher for a worker thread with event loop latency tracking enabled.
+   */
+  virtual Event::DispatcherPtr
+  allocateWorkerDispatcher(const std::string& name,
+                           const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) {
+    return allocateDispatcher(name, scaled_timer_factory);
+  }
+
+  /**
    * Allocate a dispatcher.
    * @param name the identity name for a dispatcher, e.g. "worker_2" or "main_thread".
    *             This name will appear in per-handler/worker statistics, such as

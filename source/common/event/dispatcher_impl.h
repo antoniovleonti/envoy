@@ -18,6 +18,7 @@
 #include "source/common/common/thread.h"
 #include "source/common/event/libevent.h"
 #include "source/common/event/libevent_scheduler.h"
+#include "source/common/event/loop_latency_tracker.h"
 #include "source/common/signal/fatal_error_handler.h"
 
 #include "absl/container/inlined_vector.h"
@@ -42,12 +43,14 @@ public:
                  const Buffer::WatermarkFactorySharedPtr& watermark_factory);
   DispatcherImpl(const std::string& name, Api::Api& api, Event::TimeSystem& time_system,
                  const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                 const Buffer::WatermarkFactorySharedPtr& watermark_factory);
+                 const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                 std::unique_ptr<LoopLatencyWriter> latency_tracker = nullptr);
   DispatcherImpl(const std::string& name, Thread::ThreadFactory& thread_factory,
                  TimeSource& time_source, Filesystem::Instance& file_system,
                  Event::TimeSystem& time_system,
                  const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                 const Buffer::WatermarkFactorySharedPtr& watermark_factory);
+                 const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                 std::unique_ptr<LoopLatencyWriter> latency_tracker = nullptr);
   ~DispatcherImpl() override;
 
   /**

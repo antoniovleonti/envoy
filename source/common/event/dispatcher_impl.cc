@@ -55,21 +55,25 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
 DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
                                Event::TimeSystem& time_system,
                                const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                               const Buffer::WatermarkFactorySharedPtr& watermark_factory)
+                               const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                               std::unique_ptr<LoopLatencyWriter> latency_tracker)
     : DispatcherImpl(name, api.threadFactory(), api.timeSource(), api.fileSystem(), time_system,
                      scaled_timer_factory,
                      watermark_factory != nullptr
                          ? watermark_factory
                          : std::make_shared<Buffer::WatermarkBufferFactory>(
-                               api.bootstrap().overload_manager().buffer_factory_config())) {}
+                               api.bootstrap().overload_manager().buffer_factory_config()),
+                     std::move(latency_tracker)) {}
 
 DispatcherImpl::DispatcherImpl(const std::string& name, Thread::ThreadFactory& thread_factory,
                                TimeSource& time_source, Filesystem::Instance& file_system,
                                Event::TimeSystem& time_system,
                                const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                               const Buffer::WatermarkFactorySharedPtr& watermark_factory)
+                               const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                               std::unique_ptr<LoopLatencyWriter> latency_tracker)
     : name_(name), thread_factory_(thread_factory), time_source_(time_source),
       file_system_(file_system), buffer_factory_(watermark_factory),
+      base_scheduler_(name, std::move(latency_tracker)),
       scheduler_(time_system.createScheduler(base_scheduler_, base_scheduler_)),
       thread_local_delete_cb_(
           base_scheduler_.createSchedulableCallback([this]() -> void { runThreadLocalDelete(); })),

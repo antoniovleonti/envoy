@@ -4,6 +4,7 @@
 #include "source/common/event/schedulable_cb_impl.h"
 #include "source/common/event/timer_impl.h"
 
+#include "absl/strings/match.h"
 #include "event2/util.h"
 
 namespace Envoy {
@@ -15,7 +16,9 @@ void recordTimeval(Stats::Histogram& histogram, const timeval& tv) {
 }
 } // namespace
 
-LibeventScheduler::LibeventScheduler() {
+LibeventScheduler::LibeventScheduler(const std::string& name,
+                                     std::unique_ptr<LoopLatencyWriter> latency_tracker)
+    : name_(name), latency_tracker_(std::move(latency_tracker)) {
 #ifdef WIN32
   event_config* event_config = event_config_new();
   RELEASE_ASSERT(event_config != nullptr,
@@ -33,6 +36,11 @@ LibeventScheduler::LibeventScheduler() {
 
   // The dispatcher won't work as expected if libevent hasn't been configured to use threads.
   RELEASE_ASSERT(Libevent::Global::initialized(), "");
+
+  if (latency_tracker_) {
+    evwatch_prepare_new(libevent_.get(), &onPrepareForLatency, this);
+    evwatch_check_new(libevent_.get(), &onCheckForLatency, this);
+  }
 }
 
 TimerPtr LibeventScheduler::createTimer(const TimerCb& cb, Dispatcher& dispatcher) {
@@ -139,6 +147,35 @@ void LibeventScheduler::onCheckForStats(evwatch*, const evwatch_check_cb_info*, 
     if (delay.tv_sec >= 0) {
       recordTimeval(self->stats_->poll_delay_us_, delay);
     }
+  }
+}
+
+void LibeventScheduler::onPrepareForLatency(evwatch*, const evwatch_prepare_cb_info* info,
+                                            void* arg) {
+  auto self = static_cast<LibeventScheduler*>(arg);
+
+  timeval timeout;
+  bool timeout_set = evwatch_prepare_get_timeout(info, &timeout);
+  uint64_t timeout_us = timeout_set ? (timeout.tv_sec * 1000000 + timeout.tv_usec) : 0;
+
+  uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
+
+  if (self->latency_tracker_) {
+    self->latency_tracker_->reportPrepare(now_us, timeout_set, timeout_us);
+  }
+}
+
+void LibeventScheduler::onCheckForLatency(evwatch*, const evwatch_check_cb_info*, void* arg) {
+  auto self = static_cast<LibeventScheduler*>(arg);
+
+  uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
+
+  if (self->latency_tracker_) {
+    self->latency_tracker_->reportCheck(now_us);
   }
 }
 

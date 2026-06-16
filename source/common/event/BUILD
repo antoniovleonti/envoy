@@ -141,11 +141,27 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "loop_latency_tracker_lib",
+    srcs = [
+        "loop_latency_registry.cc",
+        "loop_latency_tracker.cc",
+    ],
+    hdrs = [
+        "loop_latency_registry.h",
+        "loop_latency_tracker.h",
+    ],
+    deps = [
+        "//source/common/common:thread_lib",
+    ],
+)
+
+envoy_cc_library(
     name = "libevent_scheduler_lib",
     srcs = ["libevent_scheduler.cc"],
     hdrs = ["libevent_scheduler.h"],
     deps = [
         ":libevent_lib",
+        ":loop_latency_tracker_lib",
         ":schedulable_cb_lib",
         ":timer_lib",
         "//bazel/foreign_cc:event",

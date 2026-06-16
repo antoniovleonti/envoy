@@ -7,6 +7,7 @@
 #include "envoy/event/timer.h"
 
 #include "source/common/event/libevent.h"
+#include "source/common/event/loop_latency_tracker.h"
 
 #include "event2/event.h"
 #include "event2/watch.h"
@@ -59,7 +60,8 @@ public:
   using OnPrepareCallback = std::function<void()>;
   using OnCheckCallback = std::function<void()>;
 
-  LibeventScheduler();
+  explicit LibeventScheduler(const std::string& name = "unnamed",
+                             std::unique_ptr<LoopLatencyWriter> latency_tracker = nullptr);
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) override;
@@ -114,6 +116,8 @@ private:
   static void onCheckForCallback(evwatch*, const evwatch_check_cb_info* info, void* arg);
   static void onPrepareForStats(evwatch*, const evwatch_prepare_cb_info* info, void* arg);
   static void onCheckForStats(evwatch*, const evwatch_check_cb_info*, void* arg);
+  static void onPrepareForLatency(evwatch*, const evwatch_prepare_cb_info* info, void* arg);
+  static void onCheckForLatency(evwatch*, const evwatch_check_cb_info*, void* arg);
 
   static constexpr int flagsBasedOnEventType() {
     if constexpr (Event::PlatformDefaultTriggerType == FileTriggerType::Level) {
@@ -133,6 +137,9 @@ private:
   timeval check_time_{};     // timestamp immediately after polling
   OnPrepareCallback prepare_callback_; // callback to be called from onPrepareForCallback()
   OnCheckCallback check_callback_;     // callback to be called from onCheckForCallback()
+
+  const std::string name_;
+  std::unique_ptr<LoopLatencyWriter> latency_tracker_;
 };
 
 } // namespace Event

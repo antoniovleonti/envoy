@@ -17,34 +17,18 @@ namespace Config {
 
 class SingletonSubscriptionCallbacksAdapter : public SubscriptionCallbacks {
 public:
-  SingletonSubscriptionCallbacksAdapter(SingletonSubscriptionCallbacks& callbacks)
-      : callbacks_(callbacks) {}
+  SingletonSubscriptionCallbacksAdapter(SingletonSubscriptionCallbacks& callbacks);
 
   // SotW xDS Overload
   absl::Status onConfigUpdate(const std::vector<DecodedResourceRef>& resources,
-                              const std::string& version_info) override {
-    if (resources.empty()) {
-      callbacks_.onResourceRemoved();
-      return absl::OkStatus();
-    }
-    return callbacks_.onResourceUpdate(resources[0].get(), version_info);
-  }
+                              const std::string& version_info) override;
 
   // Delta xDS Overload
   absl::Status onConfigUpdate(const std::vector<DecodedResourceRef>& added_resources,
                               const Protobuf::RepeatedPtrField<std::string>& removed_resources,
-                              const std::string& /*system_version_info*/) override {
-    if (!removed_resources.empty()) {
-      callbacks_.onResourceRemoved();
-      return absl::OkStatus();
-    }
-    RELEASE_ASSERT(!added_resources.empty(), "Delta xDS update with no additions or removals");
-    return callbacks_.onResourceUpdate(added_resources[0].get(), added_resources[0].get().version());
-  }
+                              const std::string& system_version_info) override;
 
-  void onConfigUpdateFailed(ConfigUpdateFailureReason reason, const EnvoyException* e) override {
-    callbacks_.onFailure(reason, e);
-  }
+  void onConfigUpdateFailed(ConfigUpdateFailureReason reason, const EnvoyException* e) override;
 
 private:
   SingletonSubscriptionCallbacks& callbacks_;
@@ -53,12 +37,9 @@ private:
 class SingletonSubscriptionImpl : public SingletonSubscription {
 public:
   SingletonSubscriptionImpl(SubscriptionPtr sub, absl::string_view resource_name,
-                            std::unique_ptr<SingletonSubscriptionCallbacksAdapter> adapter)
-      : adapter_(std::move(adapter)), sub_(std::move(sub)), resource_name_(resource_name) {}
+                            std::unique_ptr<SingletonSubscriptionCallbacksAdapter> adapter);
 
-  void start() override {
-    sub_->start({resource_name_});
-  }
+  void start() override;
 
 private:
   // adapter_ must outlive sub_ because sub_ holds a reference to *adapter_.

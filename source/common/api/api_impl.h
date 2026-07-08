@@ -8,6 +8,7 @@
 #include "envoy/event/timer.h"
 #include "envoy/filesystem/filesystem.h"
 #include "envoy/network/socket.h"
+#include "envoy/singleton/manager.h"
 #include "envoy/thread/thread.h"
 
 #include "source/common/stats/custom_stat_namespaces_impl.h"
@@ -24,7 +25,8 @@ public:
        Filesystem::Instance& file_system, Random::RandomGenerator& random_generator,
        const envoy::config::bootstrap::v3::Bootstrap& bootstrap,
        const ProcessContextOptRef& process_context = absl::nullopt,
-       Buffer::WatermarkFactorySharedPtr watermark_factory = nullptr);
+       Buffer::WatermarkFactorySharedPtr watermark_factory = nullptr,
+       Singleton::Manager* singleton_manager = nullptr);
 
   // Api::Api
   Event::DispatcherPtr allocateDispatcher(const std::string& name) override;
@@ -55,6 +57,7 @@ private:
   Stats::CustomStatNamespacesImpl custom_stat_namespaces_;
   ProcessContextOptRef process_context_;
   const Buffer::WatermarkFactorySharedPtr watermark_factory_;
+  Singleton::Manager* singleton_manager_;
 };
 
 } // namespace Api

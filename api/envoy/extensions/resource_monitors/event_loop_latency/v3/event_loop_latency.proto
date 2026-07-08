@@ -2,27 +2,7 @@ syntax = "proto3";
 
 package envoy.extensions.resource_monitors.event_loop_latency.v3;
 
-import "google/protobuf/duration.proto";
-import "udpa/annotations/status.proto";
-import "validate/validate.proto";
-
-option java_package = "io.envoyproxy.envoy.extensions.resource_monitors.event_loop_latency.v3";
-option java_outer_classname = "EventLoopLatencyProto";
-option java_multiple_files = true;
-option go_package = "github.com/envoyproxy/go-control-plane/envoy/extensions/resource_monitors/event_loop_latency/v3;event_loop_latencyv3";
-option (udpa.annotations.file_status).package_version_status = ACTIVE;
-
-// [#protodoc-title: Event Loop Latency]
-// [#extension: envoy.resource_monitors.event_loop_latency]
-
-// The event loop latency resource monitor tracks the combined delay and duration of the event loops (dispatchers).
+// The event loop latency resource monitor tracks the utilization (fraction of time spent ready to execute
+// or actively executing callbacks) of the event loops (dispatchers).
 message EventLoopLatencyConfig {
-  // The maximum allowed latency for an iteration of the event loop.
-  // If the latency exceeds this threshold, the resource pressure is reported as 1.0.
-  google.protobuf.Duration max_latency = 1 [(validate.rules).duration = {required: true, gt: {}}];
-
-  // The EWMA smoothing factor (lambda) for per-thread latency tracking.
-  // Values closer to 1.0 prefer historical data, while values closer to 0.0 prefer new
-  // measurements.
-  double smoothing_factor = 2 [(validate.rules).double = {gte: 0.0, lte: 1.0}];
 }

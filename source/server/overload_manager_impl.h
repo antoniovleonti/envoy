@@ -11,6 +11,7 @@
 #include "envoy/server/options.h"
 #include "envoy/server/overload/overload_manager.h"
 #include "envoy/server/resource_monitor.h"
+#include "envoy/singleton/manager.h"
 #include "envoy/stats/scope.h"
 #include "envoy/stats/stats.h"
 #include "envoy/thread_local/thread_local.h"
@@ -157,7 +158,8 @@ public:
          ThreadLocal::SlotAllocator& slot_allocator,
          const envoy::config::overload::v3::OverloadManager& config,
          ProtobufMessage::ValidationVisitor& validation_visitor, Api::Api& api,
-         const Server::Options& options, Runtime::Loader& runtime);
+         const Server::Options& options, Runtime::Loader& runtime,
+         Singleton::Manager* singleton_manager = nullptr);
 
   // Server::OverloadManager
   void start() override;
@@ -178,7 +180,8 @@ protected:
                       const envoy::config::overload::v3::OverloadManager& config,
                       ProtobufMessage::ValidationVisitor& validation_visitor, Api::Api& api,
                       const Server::Options& options, Runtime::Loader& runtime,
-                      absl::Status& creation_status);
+                      absl::Status& creation_status,
+                      Singleton::Manager* singleton_manager = nullptr);
 
   // Factory for timer managers. This allows test-only subclasses to inject a mock implementation.
   virtual Event::ScaledRangeTimerManagerPtr createScaledRangeTimerManager(

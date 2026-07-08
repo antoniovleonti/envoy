@@ -7,36 +7,54 @@
 namespace Envoy {
 namespace Event {
 
+SINGLETON_MANAGER_REGISTRATION(loop_latency_registry);
+
 namespace {
 
 class TrackerHandle : public LoopLatencyRegistry::Handle {
 public:
-  explicit TrackerHandle(LoopLatencyTracker& tracker) : tracker_(tracker) {}
-  ~TrackerHandle() override { LoopLatencyRegistry::instance().unregisterTracker(tracker_); }
+  TrackerHandle(LoopLatencyRegistry& registry, LoopLatencyTracker& tracker)
+      : registry_(registry), tracker_(tracker) {}
+  ~TrackerHandle() override { registry_.unregisterTracker(tracker_); }
 
 private:
+  LoopLatencyRegistry& registry_;
   LoopLatencyTracker& tracker_;
 };
 
 class MonitorHandle : public LoopLatencyRegistry::Handle {
 public:
-  MonitorHandle() = default;
-  ~MonitorHandle() override { LoopLatencyRegistry::instance().unregisterMonitor(); }
+  explicit MonitorHandle(LoopLatencyRegistry& registry) : registry_(registry) {}
+  ~MonitorHandle() override { registry_.unregisterMonitor(); }
+
+private:
+  LoopLatencyRegistry& registry_;
 };
 
 } // namespace
 
-LoopLatencyRegistry& LoopLatencyRegistry::instance() {
-  static auto* instance = new LoopLatencyRegistry();
-  return *instance;
+std::shared_ptr<LoopLatencyRegistry>
+LoopLatencyRegistry::singleton(Singleton::Manager* manager) {
+  if (manager == nullptr) {
+    static auto fallback_instance = std::make_shared<LoopLatencyRegistry>();
+    return fallback_instance;
+  }
+  return manager->getTyped<LoopLatencyRegistry>(
+      SINGLETON_MANAGER_REGISTERED_NAME(loop_latency_registry),
+      [] { return std::make_shared<LoopLatencyRegistry>(); },
+      /*pin=*/true);
+}
+
+std::unique_ptr<LoopLatencyTracker>
+LoopLatencyRegistry::createTracker(const std::string& dispatcher_name) {
+  return std::make_unique<LoopLatencyTracker>(dispatcher_name, shared_from_this());
 }
 
 LoopLatencyRegistry::HandlePtr LoopLatencyRegistry::registerTracker(LoopLatencyTracker& tracker) {
   absl::MutexLock lock(&mutex_);
-  tracker.setSmoothingFactor(smoothing_factor_);
   tracker.enable(active_monitors_ > 0);
   trackers_.push_back(tracker);
-  return std::make_unique<TrackerHandle>(tracker);
+  return std::make_unique<TrackerHandle>(*this, tracker);
 }
 
 void LoopLatencyRegistry::unregisterTracker(LoopLatencyTracker& tracker) {
@@ -58,16 +76,6 @@ std::vector<std::reference_wrapper<const LoopLatencyReader>> LoopLatencyRegistry
   return result;
 }
 
-void LoopLatencyRegistry::setSmoothingFactor(double lambda) {
-  if (lambda >= 0.0 && lambda <= 1.0) {
-    absl::MutexLock lock(&mutex_);
-    smoothing_factor_ = lambda;
-    for (LoopLatencyTracker& tracker : trackers_) {
-      tracker.setSmoothingFactor(lambda);
-    }
-  }
-}
-
 LoopLatencyRegistry::HandlePtr LoopLatencyRegistry::registerMonitor() {
   absl::MutexLock lock(&mutex_);
   ++active_monitors_;
@@ -76,7 +84,7 @@ LoopLatencyRegistry::HandlePtr LoopLatencyRegistry::registerMonitor() {
       tracker.enable(true);
     }
   }
-  return std::make_unique<MonitorHandle>();
+  return std::make_unique<MonitorHandle>(*this);
 }
 
 void LoopLatencyRegistry::unregisterMonitor() {

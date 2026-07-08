@@ -9,6 +9,7 @@
 #include "test/mocks/runtime/mocks.h"
 #include "test/mocks/server/options.h"
 #include "test/mocks/stats/mocks.h"
+#include "test/test_common/simulated_time_system.h"
 #include "test/test_common/utility.h"
 
 #include "gmock/gmock.h"
@@ -29,26 +30,16 @@ public:
 class EventLoopLatencyMonitorTest : public testing::Test {
 protected:
   EventLoopLatencyMonitorTest()
-      : api_(Api::createApiForTest()), dispatcher_(api_->allocateDispatcher("test_thread")) {}
+      : api_(Api::createApiForTest(time_system_)), dispatcher_(api_->allocateDispatcher("test_thread")) {}
 
-  std::unique_ptr<EventLoopLatencyMonitor> createMonitor(uint64_t max_latency_ms) {
+  std::unique_ptr<EventLoopLatencyMonitor> createMonitor() {
     envoy::extensions::resource_monitors::event_loop_latency::v3::EventLoopLatencyConfig config;
-    config.mutable_max_latency()->set_nanos(max_latency_ms * 1000000);
     Server::Configuration::ResourceMonitorFactoryContextImpl context(
         *dispatcher_, options_, *api_, ProtobufMessage::getStrictValidationVisitor(), runtime_);
     return std::make_unique<EventLoopLatencyMonitor>(config, context);
   }
 
-  std::unique_ptr<EventLoopLatencyMonitor> createMonitorWithSmoothing(uint64_t max_latency_ms,
-                                                                      double lambda) {
-    envoy::extensions::resource_monitors::event_loop_latency::v3::EventLoopLatencyConfig config;
-    config.mutable_max_latency()->set_nanos(max_latency_ms * 1000000);
-    config.set_smoothing_factor(lambda);
-    Server::Configuration::ResourceMonitorFactoryContextImpl context(
-        *dispatcher_, options_, *api_, ProtobufMessage::getStrictValidationVisitor(), runtime_);
-    return std::make_unique<EventLoopLatencyMonitor>(config, context);
-  }
-
+  Event::SimulatedTimeSystem time_system_;
   Api::ApiPtr api_;
   Event::DispatcherPtr dispatcher_;
   Server::MockOptions options_;
@@ -57,75 +48,68 @@ protected:
 };
 
 TEST_F(EventLoopLatencyMonitorTest, EmptyRegistry) {
-  auto monitor = createMonitor(50);
+  auto monitor = createMonitor();
   EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.0}));
   monitor->updateResourceUsage(cb_);
 }
 
-TEST_F(EventLoopLatencyMonitorTest, CalculatePressureFromRollingAverage) {
-  auto monitor = createMonitor(50); // 50ms max latency = 50000us
+TEST_F(EventLoopLatencyMonitorTest, CalculateUtilization) {
+  auto registry = Event::LoopLatencyRegistry::singleton(nullptr);
+  auto tracker1 = registry->createTracker("worker_0");
 
-  Event::LoopLatencyTracker tracker1("worker_0");
+  auto monitor = createMonitor();
 
-  // First sample initialized EWMA rolling average to exactly 20ms = 20000us
-  tracker1.reportPrepare(100000, true, 10000);
-  tracker1.reportCheck(110000);             // Poll delay is 0
-  tracker1.reportPrepare(130000, false, 0); // callback execution took 20ms. Combined = 20ms.
+  // Advance time by 100ms (100000us)
+  time_system_.advanceTimeWait(std::chrono::milliseconds(100));
 
-  // Query should report 20ms / 50ms = 0.4 pressure
-  EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.4}));
-  monitor->updateResourceUsage(cb_);
-}
+  // During this 100ms window, tracker1 accumulated 20ms (20000us) of combined epoll latency
+  tracker1->reportPrepare(100000, true, 10000);
+  tracker1->reportCheck(110000);             // Poll delay is 0
+  tracker1->reportPrepare(130000, false, 0); // callback execution took 20ms. Combined = 20ms.
 
-TEST_F(EventLoopLatencyMonitorTest, CalculatePressureWithConfiguredSmoothing) {
-  auto monitor = createMonitorWithSmoothing(50, 0.9); // 50ms max, 0.9 lambda
-
-  Event::LoopLatencyTracker tracker1("worker_0");
-
-  tracker1.reportPrepare(100000, true, 10000);
-  tracker1.reportCheck(110000);             // Poll delay is 0
-  tracker1.reportPrepare(120000, false, 0); // 10ms. First sample sets EWMA to exactly 10ms.
-
-  // Second sample: 30ms latency.
-  tracker1.reportCheck(130000);
-  tracker1.reportPrepare(160000, false, 0); // 30ms.
-
-  // New EWMA with lambda=0.9: 0.9 * 10 + 0.1 * 30 = 9 + 3 = 12ms = 12000us
-  // Pressure: 12ms / 50ms = 0.24
-  EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.24}));
+  // Query should report 20ms / 100ms = 0.2 pressure
+  EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.2}));
   monitor->updateResourceUsage(cb_);
 }
 
 TEST_F(EventLoopLatencyMonitorTest, MultipleTrackersMax) {
-  auto monitor = createMonitor(50); // 50ms max
+  auto registry = Event::LoopLatencyRegistry::singleton(nullptr);
+  auto tracker1 = registry->createTracker("worker_0");
+  auto tracker2 = registry->createTracker("worker_1");
 
-  Event::LoopLatencyTracker tracker1("worker_0");
-  Event::LoopLatencyTracker tracker2("worker_1");
+  auto monitor = createMonitor();
 
-  // tracker1 has 10ms rolling avg
-  tracker1.reportPrepare(100000, true, 10000);
-  tracker1.reportCheck(110000);
-  tracker1.reportPrepare(120000, false, 0); // 10ms
+  // Advance time by 100ms (100000us)
+  time_system_.advanceTimeWait(std::chrono::milliseconds(100));
 
-  // tracker2 has 30ms rolling avg
-  tracker2.reportPrepare(100000, true, 10000);
-  tracker2.reportCheck(110000);
-  tracker2.reportPrepare(140000, false, 0); // 30ms
+  // tracker1 accumulated 10ms (10000us)
+  tracker1->reportPrepare(100000, true, 10000);
+  tracker1->reportCheck(110000);
+  tracker1->reportPrepare(120000, false, 0);
 
-  // Query should report maximum of the two: 30ms / 50ms = 0.6 pressure
-  EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.6}));
+  // tracker2 accumulated 30ms (30000us)
+  tracker2->reportPrepare(100000, true, 10000);
+  tracker2->reportCheck(110000);
+  tracker2->reportPrepare(140000, false, 0);
+
+  // Query should report maximum of the two: 30000us / 100000us = 0.3 pressure
+  EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{0.3}));
   monitor->updateResourceUsage(cb_);
 }
 
 TEST_F(EventLoopLatencyMonitorTest, ClampsPressure) {
-  auto monitor = createMonitor(50); // 50ms max
+  auto registry = Event::LoopLatencyRegistry::singleton(nullptr);
+  auto tracker1 = registry->createTracker("worker_0");
 
-  Event::LoopLatencyTracker tracker1("worker_0");
+  auto monitor = createMonitor();
 
-  // tracker1 has 60ms rolling avg
-  tracker1.reportPrepare(100000, true, 10000);
-  tracker1.reportCheck(110000);
-  tracker1.reportPrepare(170000, false, 0); // 60ms
+  // Advance time by 50ms (50000us)
+  time_system_.advanceTimeWait(std::chrono::milliseconds(50));
+
+  // tracker1 accumulated 60ms (60000us)
+  tracker1->reportPrepare(100000, true, 10000);
+  tracker1->reportCheck(110000);
+  tracker1->reportPrepare(170000, false, 0); // 60ms
 
   // Query should report 1.0 pressure (clamped)
   EXPECT_CALL(cb_, onSuccess(Server::ResourceUsage{1.0}));

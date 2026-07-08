@@ -151,6 +151,8 @@ envoy_cc_library(
         "loop_latency_tracker.h",
     ],
     deps = [
+        "//envoy/singleton:instance_interface",
+        "//envoy/singleton:manager_interface",
         "//source/common/common:thread_lib",
     ],
 )

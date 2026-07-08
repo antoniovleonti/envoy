@@ -17,6 +17,7 @@ envoy_cc_library(
         "//envoy/api:api_interface",
         "//envoy/server:resource_monitor_config_interface",
         "//source/common/event:loop_latency_tracker_lib",
+        "@abseil-cpp//absl/container:flat_hash_map",
         "@envoy_api//envoy/extensions/resource_monitors/event_loop_latency/v3:pkg_cc_proto",
     ],
 )

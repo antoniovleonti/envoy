@@ -323,6 +323,7 @@ envoy_cc_library(
         "//envoy/api:api_interface",
         "//envoy/event:dispatcher_interface",
         "//envoy/protobuf:message_validator_interface",
+        "//envoy/singleton:manager_interface",
     ],
 )
 

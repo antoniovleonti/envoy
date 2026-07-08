@@ -154,7 +154,8 @@ void ValidationInstance::initialize(const Options& options,
   overload_manager_ = THROW_OR_RETURN_VALUE(
       OverloadManagerImpl::create(
           dispatcher(), *stats().rootScope(), threadLocal(), bootstrap_.overload_manager(),
-          messageValidationContext().staticValidationVisitor(), *api_, options_, *runtime_),
+          messageValidationContext().staticValidationVisitor(), *api_, options_, *runtime_,
+          &singletonManager()),
       std::unique_ptr<OverloadManagerImpl>);
   null_overload_manager_ = std::make_unique<NullOverloadManager>(threadLocal(), false);
 

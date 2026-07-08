@@ -15,8 +15,10 @@ envoy_cc_library(
     hdrs = ["api_impl.h"],
     deps = [
         "//envoy/api:api_interface",
+        "//envoy/singleton:manager_interface",
         "//source/common/common:thread_lib",
         "//source/common/event:dispatcher_lib",
+        "//source/common/event:loop_latency_tracker_lib",
         "//source/common/network:socket_lib",
         "//source/common/stats:custom_stat_namespaces_lib",
         "@envoy_api//envoy/config/bootstrap/v3:pkg_cc_proto",

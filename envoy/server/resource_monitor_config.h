@@ -9,6 +9,7 @@
 #include "envoy/server/options.h"
 #include "envoy/server/proactive_resource_monitor.h"
 #include "envoy/server/resource_monitor.h"
+#include "envoy/singleton/manager.h"
 
 #include "source/common/protobuf/protobuf.h"
 
@@ -46,6 +47,11 @@ public:
    * @return Runtime::Loader& the runtime loader for runtime key overrides.
    */
   virtual Runtime::Loader& runtime() PURE;
+
+  /**
+   * @return Singleton::Manager* supplies the singleton manager if available.
+   */
+  virtual Singleton::Manager* singletonManager() PURE;
 };
 
 /**

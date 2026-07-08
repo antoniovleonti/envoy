@@ -397,6 +397,7 @@ private:
   ThreadLocal::Instance& thread_local_;
   Random::RandomGeneratorPtr random_generator_;
   envoy::config::bootstrap::v3::Bootstrap bootstrap_;
+  Singleton::ManagerImpl singleton_manager_;
   Api::ApiPtr api_;
   // ssl_context_manager_ must come before dispatcher_, since ClusterInfo
   // references SslSocketFactory and is deleted on the main thread via the dispatcher.
@@ -404,7 +405,6 @@ private:
   Event::DispatcherPtr dispatcher_;
   AccessLog::AccessLogManagerImpl access_log_manager_;
   std::shared_ptr<Admin> admin_;
-  Singleton::ManagerImpl singleton_manager_;
   Network::ConnectionHandlerPtr handler_;
   std::unique_ptr<Runtime::Loader> runtime_;
   ProdWorkerFactory worker_factory_;

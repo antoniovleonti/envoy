@@ -19,6 +19,7 @@ envoy_cc_test(
         "//test/mocks/runtime:runtime_mocks",
         "//test/mocks/server:options_mocks",
         "//test/mocks/stats:stats_mocks",
+        "//test/test_common:simulated_time_system_lib",
         "//test/test_common:utility_lib",
         "@envoy_api//envoy/extensions/resource_monitors/event_loop_latency/v3:pkg_cc_proto",
     ],

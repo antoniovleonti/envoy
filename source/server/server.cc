@@ -94,7 +94,7 @@ InstanceBase::InstanceBase(Init::Manager& init_manager, const Options& options,
       api_(new Api::Impl(
           thread_factory, store, time_system, file_system, *random_generator_, bootstrap_,
           process_context ? ProcessContextOptRef(std::ref(*process_context)) : absl::nullopt,
-          watermark_factory)),
+          watermark_factory, &singleton_manager_)),
       dispatcher_(api_->allocateDispatcher("main_thread")),
       access_log_manager_(options.fileFlushIntervalMsec(), options.fileFlushMinSizeKB(), *api_,
                           *dispatcher_, access_log_lock, store),

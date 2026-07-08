@@ -322,6 +322,7 @@ envoy_cc_library(
     hdrs = ["overload_manager_impl.h"],
     deps = [
         "//envoy/server/overload:overload_manager_interface",
+        "//envoy/singleton:manager_interface",
         "//envoy/stats:stats_interface",
         "//envoy/thread_local:thread_local_interface",
         "//source/common/common:logger_lib",
@@ -368,6 +369,7 @@ envoy_cc_library(
     hdrs = ["resource_monitor_config_impl.h"],
     deps = [
         "//envoy/server:resource_monitor_config_interface",
+        "//envoy/singleton:manager_interface",
     ],
 )
 

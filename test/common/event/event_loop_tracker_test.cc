@@ -1,6 +1,7 @@
 #include <memory>
 #include <string>
 
+#include "envoy/event/event_loop_tracker.h"
 #include "source/common/event/event_loop_tracker_registry.h"
 
 #include "test/mocks/event/mocks.h"

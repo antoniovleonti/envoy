@@ -7,6 +7,7 @@
 #include "envoy/common/time.h"
 #include "envoy/config/bootstrap/v3/bootstrap.pb.h"
 #include "envoy/event/dispatcher.h"
+#include "envoy/event/event_loop_tracker.h"
 #include "envoy/event/scaled_range_timer_manager.h"
 #include "envoy/filesystem/filesystem.h"
 #include "envoy/server/process_context.h"
@@ -15,9 +16,6 @@
 #include "envoy/thread/thread.h"
 
 namespace Envoy {
-namespace Event {
-class EventLoopTrackerRegistry;
-} // namespace Event
 namespace Api {
 
 /**

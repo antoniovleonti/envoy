@@ -11,6 +11,7 @@
 #include "envoy/config/core/v3/resolver.pb.h"
 #include "envoy/config/core/v3/udp_socket_config.pb.h"
 #include "envoy/event/dispatcher_thread_deletable.h"
+#include "envoy/event/event_loop_tracker.h"
 #include "envoy/event/file_event.h"
 #include "envoy/event/scaled_timer.h"
 #include "envoy/event/schedulable_cb.h"
@@ -34,8 +35,6 @@
 
 namespace Envoy {
 namespace Event {
-
-class EventLoopTracker;
 
 /**
  * All dispatcher stats. @see stats_macros.h

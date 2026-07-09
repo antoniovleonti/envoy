@@ -9,6 +9,7 @@
 #include "envoy/common/time.h"
 #include "envoy/event/deferred_deletable.h"
 #include "envoy/event/dispatcher.h"
+#include "envoy/event/event_loop_tracker.h"
 #include "envoy/event/file_event.h"
 #include "envoy/event/scaled_range_timer_manager.h"
 #include "envoy/event/signal.h"
@@ -20,7 +21,6 @@
 #include "envoy/ssl/context.h"
 
 #include "source/common/common/scope_tracker.h"
-#include "source/common/event/event_loop_tracker.h"
 
 #include "test/mocks/buffer/mocks.h"
 #include "test/test_common/test_time.h"

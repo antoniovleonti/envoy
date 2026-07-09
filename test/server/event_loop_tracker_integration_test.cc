@@ -4,6 +4,7 @@
 #include <string>
 
 #include "envoy/api/api.h"
+#include "envoy/event/event_loop_tracker.h"
 #include "envoy/server/worker.h"
 
 #include "source/common/api/api_impl.h"

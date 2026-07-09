@@ -99,12 +99,12 @@ envoy_cc_library(
         "event_loop_tracker_registry.cc",
     ],
     hdrs = [
-        "event_loop_tracker.h",
         "event_loop_tracker_registry.h",
     ],
     deps = [
         "//envoy/common:pure_lib",
         "//envoy/event:dispatcher_interface",
+        "//envoy/event:event_loop_tracker_interface",
         "@abseil-cpp//absl/base:core_headers",
         "@abseil-cpp//absl/synchronization",
     ],

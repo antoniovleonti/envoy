@@ -14,6 +14,7 @@ envoy_cc_library(
     deps = [
         "//envoy/common:random_generator_interface",
         "//envoy/event:dispatcher_interface",
+        "//envoy/event:event_loop_tracker_interface",
         "//envoy/event:scaled_range_timer_manager_interface",
         "//envoy/filesystem:filesystem_interface",
         "//envoy/server:process_context_interface",

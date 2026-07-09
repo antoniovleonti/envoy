@@ -25,6 +25,7 @@ envoy_cc_mock(
         "//envoy/network:dns_interface",
         "//envoy/network:listener_interface",
         "//envoy/ssl:context_interface",
+        "//source/common/event:event_loop_tracker_lib",
         "//test/mocks/buffer:buffer_mocks",
         "//test/test_common:test_time_lib",
     ],
@@ -35,5 +36,6 @@ envoy_cc_test_library(
     hdrs = ["wrapped_dispatcher.h"],
     deps = [
         "//envoy/event:dispatcher_interface",
+        "//source/common/event:event_loop_tracker_lib",
     ],
 )

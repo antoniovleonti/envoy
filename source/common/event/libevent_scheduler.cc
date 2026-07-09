@@ -142,5 +142,43 @@ void LibeventScheduler::onCheckForStats(evwatch*, const evwatch_check_cb_info*, 
   }
 }
 
+void LibeventScheduler::onPrepareForTracker(evwatch*, const evwatch_prepare_cb_info* info,
+                                            void* arg) {
+  auto self = static_cast<LibeventScheduler*>(arg);
+  timeval tv;
+  evutil_gettimeofday(&tv, nullptr);
+  uint64_t prepare_time_us = tv.tv_sec * 1000000 + tv.tv_usec;
+  timeval timeout;
+  bool timeout_set = evwatch_prepare_get_timeout(info, &timeout);
+  uint64_t timeout_us = 0;
+  if (timeout_set) {
+    timeout_us = timeout.tv_sec * 1000000 + timeout.tv_usec;
+  }
+  for (auto& tracker : self->event_loop_trackers_) {
+    tracker->reportPrepare(prepare_time_us, timeout_set, timeout_us);
+  }
+}
+
+void LibeventScheduler::onCheckForTracker(evwatch*, const evwatch_check_cb_info*, void* arg) {
+  auto self = static_cast<LibeventScheduler*>(arg);
+  timeval tv;
+  evutil_gettimeofday(&tv, nullptr);
+  uint64_t check_time_us = tv.tv_sec * 1000000 + tv.tv_usec;
+  for (auto& tracker : self->event_loop_trackers_) {
+    tracker->reportCheck(check_time_us);
+  }
+}
+
+void LibeventScheduler::registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) {
+  if (tracker == nullptr) {
+    return;
+  }
+  if (event_loop_trackers_.empty()) {
+    evwatch_prepare_new(libevent_.get(), &onPrepareForTracker, this);
+    evwatch_check_new(libevent_.get(), &onCheckForTracker, this);
+  }
+  event_loop_trackers_.push_back(std::move(tracker));
+}
+
 } // namespace Event
 } // namespace Envoy

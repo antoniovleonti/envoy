@@ -1,13 +1,16 @@
 #pragma once
 
 #include <functional>
+#include <vector>
 
 #include "envoy/event/dispatcher.h"
 #include "envoy/event/schedulable_cb.h"
 #include "envoy/event/timer.h"
 
+#include "source/common/event/event_loop_tracker.h"
 #include "source/common/event/libevent.h"
 
+#include "absl/container/inlined_vector.h"
 #include "event2/event.h"
 #include "event2/watch.h"
 
@@ -60,6 +63,8 @@ public:
   using OnCheckCallback = std::function<void()>;
 
   LibeventScheduler();
+
+  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker);
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) override;
@@ -114,6 +119,8 @@ private:
   static void onCheckForCallback(evwatch*, const evwatch_check_cb_info* info, void* arg);
   static void onPrepareForStats(evwatch*, const evwatch_prepare_cb_info* info, void* arg);
   static void onCheckForStats(evwatch*, const evwatch_check_cb_info*, void* arg);
+  static void onPrepareForTracker(evwatch*, const evwatch_prepare_cb_info* info, void* arg);
+  static void onCheckForTracker(evwatch*, const evwatch_check_cb_info*, void* arg);
 
   static constexpr int flagsBasedOnEventType() {
     if constexpr (Event::PlatformDefaultTriggerType == FileTriggerType::Level) {
@@ -133,6 +140,7 @@ private:
   timeval check_time_{};     // timestamp immediately after polling
   OnPrepareCallback prepare_callback_; // callback to be called from onPrepareForCallback()
   OnCheckCallback check_callback_;     // callback to be called from onCheckForCallback()
+  std::vector<std::unique_ptr<EventLoopTracker>> event_loop_trackers_;
 };
 
 } // namespace Event

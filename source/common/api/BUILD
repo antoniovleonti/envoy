@@ -17,6 +17,7 @@ envoy_cc_library(
         "//envoy/api:api_interface",
         "//source/common/common:thread_lib",
         "//source/common/event:dispatcher_lib",
+        "//source/common/event:event_loop_tracker_lib",
         "//source/common/network:socket_lib",
         "//source/common/stats:custom_stat_namespaces_lib",
         "@envoy_api//envoy/config/bootstrap/v3:pkg_cc_proto",

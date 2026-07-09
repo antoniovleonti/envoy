@@ -28,6 +28,15 @@ envoy_cc_test(
 )
 
 envoy_cc_test(
+    name = "event_loop_tracker_test",
+    srcs = ["event_loop_tracker_test.cc"],
+    deps = [
+        "//source/common/event:event_loop_tracker_lib",
+        "//test/mocks/event:event_mocks",
+    ],
+)
+
+envoy_cc_test(
     name = "file_event_impl_test",
     srcs = ["file_event_impl_test.cc"],
     rbe_pool = "6gig",

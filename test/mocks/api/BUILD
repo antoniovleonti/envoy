@@ -18,6 +18,7 @@ envoy_cc_mock(
         "//envoy/api:os_sys_calls_interface",
         "//source/common/api:os_sys_calls_lib",
         "//source/common/common:assert_lib",
+        "//source/common/event:event_loop_tracker_lib",
         "//test/mocks/filesystem:filesystem_mocks",
         "//test/mocks/stats:stats_mocks",
         "//test/test_common:test_time_lib",

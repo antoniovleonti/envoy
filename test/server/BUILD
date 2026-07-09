@@ -438,6 +438,26 @@ envoy_cc_test_library(
 )
 
 envoy_cc_test(
+    name = "event_loop_tracker_integration_test",
+    srcs = ["event_loop_tracker_integration_test.cc"],
+    rbe_pool = "6gig",
+    deps = [
+        "//source/common/api:api_lib",
+        "//source/common/event:dispatcher_lib",
+        "//source/common/event:event_loop_tracker_lib",
+        "//source/common/event:scaled_range_timer_manager_lib",
+        "//source/common/thread_local:thread_local_lib",
+        "//source/server:worker_lib",
+        "//test/mocks/network:network_mocks",
+        "//test/mocks/runtime:runtime_mocks",
+        "//test/mocks/server:guard_dog_mocks",
+        "//test/mocks/server:instance_mocks",
+        "//test/mocks/server:overload_manager_mocks",
+        "//test/test_common:utility_lib",
+    ],
+)
+
+envoy_cc_test(
     name = "worker_impl_test",
     srcs = ["worker_impl_test.cc"],
     rbe_pool = "6gig",

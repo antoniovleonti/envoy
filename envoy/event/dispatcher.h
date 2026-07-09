@@ -35,6 +35,8 @@
 namespace Envoy {
 namespace Event {
 
+class EventLoopTracker;
+
 /**
  * All dispatcher stats. @see stats_macros.h
  */
@@ -165,6 +167,13 @@ public:
    */
   virtual void registerWatchdog(const Server::WatchDogSharedPtr& watchdog,
                                 std::chrono::milliseconds min_touch_interval) PURE;
+
+  /**
+   * Register an EventLoopTracker to receive prepare and check callbacks on this dispatcher's
+   * event loop. Must be called on the dispatcher's thread or via post().
+   * @param tracker the tracker to register.
+   */
+  virtual void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) = 0;
 
   /**
    * Returns a time-source to use with this dispatcher.

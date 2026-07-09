@@ -20,6 +20,7 @@
 #include "envoy/ssl/context.h"
 
 #include "source/common/common/scope_tracker.h"
+#include "source/common/event/event_loop_tracker.h"
 
 #include "test/mocks/buffer/mocks.h"
 #include "test/test_common/test_time.h"
@@ -117,6 +118,7 @@ public:
   // Event::Dispatcher
   MOCK_METHOD(void, registerWatchdog,
               (const Server::WatchDogSharedPtr&, std::chrono::milliseconds));
+  MOCK_METHOD(void, registerEventLoopTracker, (std::unique_ptr<EventLoopTracker>));
   MOCK_METHOD(void, initializeStats, (Stats::Scope&, const absl::optional<std::string>&));
   MOCK_METHOD(void, clearDeferredDeleteList, ());
   MOCK_METHOD(Network::ServerConnection*, createServerConnection_, (StreamInfo::StreamInfo & info));

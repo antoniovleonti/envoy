@@ -15,6 +15,9 @@
 #include "envoy/thread/thread.h"
 
 namespace Envoy {
+namespace Event {
+class EventLoopTrackerRegistry;
+} // namespace Event
 namespace Api {
 
 /**
@@ -46,6 +49,16 @@ public:
                      const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) PURE;
 
   /**
+   * Allocate a worker thread dispatcher that registers with eventLoopTrackerRegistry().
+   * @param name the identity name for a dispatcher, e.g. "worker_2".
+   * @param scaled_timer_factory the factory to use when creating the scaled timer manager.
+   * @return Event::DispatcherPtr which is owned by the caller.
+   */
+  virtual Event::DispatcherPtr
+  allocateWorkerDispatcher(const std::string& name,
+                           const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) = 0;
+
+  /**
    * Allocate a dispatcher.
    * @param name the identity name for a dispatcher, e.g. "worker_2" or "main_thread".
    *             This name will appear in per-handler/worker statistics, such as
@@ -55,6 +68,11 @@ public:
    */
   virtual Event::DispatcherPtr
   allocateDispatcher(const std::string& name, Buffer::WatermarkFactoryPtr&& watermark_factory) PURE;
+
+  /**
+   * @return a reference to the Event::EventLoopTrackerRegistry for worker threads.
+   */
+  virtual Event::EventLoopTrackerRegistry& eventLoopTrackerRegistry() = 0;
 
   /**
    * @return a reference to the ThreadFactory

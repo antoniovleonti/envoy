@@ -16,6 +16,7 @@
 
 #include "source/common/common/logger.h"
 #include "source/common/common/thread.h"
+#include "source/common/event/event_loop_tracker.h"
 #include "source/common/event/libevent.h"
 #include "source/common/event/libevent_scheduler.h"
 #include "source/common/signal/fatal_error_handler.h"
@@ -47,8 +48,11 @@ public:
                  TimeSource& time_source, Filesystem::Instance& file_system,
                  Event::TimeSystem& time_system,
                  const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                 const Buffer::WatermarkFactorySharedPtr& watermark_factory);
+                 const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                 EventLoopTrackerRegistry* event_loop_tracker_registry = nullptr);
   ~DispatcherImpl() override;
+
+  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override;
 
   /**
    * @return event_base& the libevent base.
@@ -173,6 +177,7 @@ private:
   bool deferred_deleting_{};
   MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
+  EventLoopTrackerRegistry* event_loop_tracker_registry_{nullptr};
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
 };
 

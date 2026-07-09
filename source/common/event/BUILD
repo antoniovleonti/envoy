@@ -94,6 +94,23 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
+    name = "event_loop_tracker_lib",
+    srcs = [
+        "event_loop_tracker_registry.cc",
+    ],
+    hdrs = [
+        "event_loop_tracker.h",
+        "event_loop_tracker_registry.h",
+    ],
+    deps = [
+        "//envoy/common:pure_lib",
+        "//envoy/event:dispatcher_interface",
+        "@abseil-cpp//absl/base:core_headers",
+        "@abseil-cpp//absl/synchronization",
+    ],
+)
+
+envoy_cc_library(
     name = "real_time_system_lib",
     srcs = ["real_time_system.cc"],
     hdrs = ["real_time_system.h"],
@@ -115,6 +132,7 @@ envoy_cc_library(
         "schedulable_cb_impl.h",
     ],
     deps = [
+        ":event_loop_tracker_lib",
         ":libevent_lib",
         ":libevent_scheduler_lib",
         "//envoy/api:api_interface",
@@ -145,6 +163,7 @@ envoy_cc_library(
     srcs = ["libevent_scheduler.cc"],
     hdrs = ["libevent_scheduler.h"],
     deps = [
+        ":event_loop_tracker_lib",
         ":libevent_lib",
         ":schedulable_cb_lib",
         ":timer_lib",

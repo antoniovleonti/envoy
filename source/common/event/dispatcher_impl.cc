@@ -18,6 +18,7 @@
 #include "source/common/common/lock_guard.h"
 #include "source/common/common/thread.h"
 #include "source/common/config/utility.h"
+#include "source/common/event/event_loop_tracker_registry.h"
 #include "source/common/event/file_event_impl.h"
 #include "source/common/event/libevent_scheduler.h"
 #include "source/common/event/scaled_range_timer_manager_impl.h"
@@ -61,13 +62,15 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Api::Api& api,
                      watermark_factory != nullptr
                          ? watermark_factory
                          : std::make_shared<Buffer::WatermarkBufferFactory>(
-                               api.bootstrap().overload_manager().buffer_factory_config())) {}
+                               api.bootstrap().overload_manager().buffer_factory_config()),
+                     &api.eventLoopTrackerRegistry()) {}
 
 DispatcherImpl::DispatcherImpl(const std::string& name, Thread::ThreadFactory& thread_factory,
                                TimeSource& time_source, Filesystem::Instance& file_system,
                                Event::TimeSystem& time_system,
                                const ScaledRangeTimerManagerFactory& scaled_timer_factory,
-                               const Buffer::WatermarkFactorySharedPtr& watermark_factory)
+                               const Buffer::WatermarkFactorySharedPtr& watermark_factory,
+                               EventLoopTrackerRegistry* event_loop_tracker_registry)
     : name_(name), thread_factory_(thread_factory), time_source_(time_source),
       file_system_(file_system), buffer_factory_(watermark_factory),
       scheduler_(time_system.createScheduler(base_scheduler_, base_scheduler_)),
@@ -76,16 +79,24 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Thread::ThreadFactory& t
       deferred_delete_cb_(base_scheduler_.createSchedulableCallback(
           [this]() -> void { clearDeferredDeleteList(); })),
       post_cb_(base_scheduler_.createSchedulableCallback([this]() -> void { runPostCallbacks(); })),
-      current_to_delete_(&to_delete_1_), scaled_timer_manager_(scaled_timer_factory(*this)) {
+      current_to_delete_(&to_delete_1_), watchdog_registration_(nullptr),
+      event_loop_tracker_registry_(event_loop_tracker_registry),
+      scaled_timer_manager_(scaled_timer_factory(*this)) {
   ASSERT(!name_.empty());
   FatalErrorHandler::registerFatalErrorHandler(*this);
   updateApproximateMonotonicTimeInternal();
   base_scheduler_.registerOnCheckCallback(
       std::bind(&DispatcherImpl::updateApproximateMonotonicTime, this));
+  if (event_loop_tracker_registry_ != nullptr) {
+    event_loop_tracker_registry_->registerWorkerDispatcher(*this);
+  }
 }
 
 DispatcherImpl::~DispatcherImpl() {
   ENVOY_LOG(debug, "destroying dispatcher {}", name_);
+  if (event_loop_tracker_registry_ != nullptr) {
+    event_loop_tracker_registry_->unregisterWorkerDispatcher(*this);
+  }
   FatalErrorHandler::removeFatalErrorHandler(*this);
   // TODO(lambdai): Resolve https://github.com/envoyproxy/envoy/issues/15072 and enable
   // ASSERT(deletable_in_dispatcher_thread_.empty())
@@ -428,6 +439,10 @@ void DispatcherImpl::popTrackedObject(const ScopeTrackedObject* expected_object)
   tracked_object_stack_.pop_back();
   ASSERT(top == expected_object,
          "Popped the top of the tracked object stack, but it wasn't the expected object!");
+}
+
+void DispatcherImpl::registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) {
+  base_scheduler_.registerEventLoopTracker(std::move(tracker));
 }
 
 } // namespace Event

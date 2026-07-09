@@ -7,6 +7,8 @@
 
 #include "envoy/event/dispatcher.h"
 
+#include "source/common/event/event_loop_tracker.h"
+
 namespace Envoy {
 namespace Event {
 
@@ -23,6 +25,10 @@ public:
   void registerWatchdog(const Server::WatchDogSharedPtr& watchdog,
                         std::chrono::milliseconds min_touch_interval) override {
     impl_.registerWatchdog(watchdog, min_touch_interval);
+  }
+
+  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override {
+    impl_.registerEventLoopTracker(std::move(tracker));
   }
 
   TimeSource& timeSource() override { return impl_.timeSource(); }

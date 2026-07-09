@@ -65,6 +65,7 @@ public:
   LibeventScheduler();
 
   void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker);
+  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory);
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) override;
@@ -141,6 +142,7 @@ private:
   OnPrepareCallback prepare_callback_; // callback to be called from onPrepareForCallback()
   OnCheckCallback check_callback_;     // callback to be called from onCheckForCallback()
   std::vector<std::unique_ptr<EventLoopTracker>> event_loop_trackers_;
+  bool evwatch_trackers_registered_{false};
 };
 
 } // namespace Event

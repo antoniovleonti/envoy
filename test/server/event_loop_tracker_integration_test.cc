@@ -31,8 +31,11 @@ namespace {
 
 class FakeEventLoopTracker : public Event::EventLoopTracker {
 public:
-  FakeEventLoopTracker(std::atomic<uint64_t>& prepare_count, std::atomic<uint64_t>& check_count)
-      : prepare_count_(prepare_count), check_count_(check_count) {}
+  FakeEventLoopTracker(const Event::EventLoopTrackerFactory& factory,
+                       std::atomic<uint64_t>& prepare_count, std::atomic<uint64_t>& check_count)
+      : factory_(factory), prepare_count_(prepare_count), check_count_(check_count) {}
+
+  const Event::EventLoopTrackerFactory& factory() const override { return factory_; }
 
   void reportPrepare(uint64_t, bool, uint64_t) override {
     ASSERT_IS_NOT_MAIN_OR_TEST_THREAD();
@@ -45,6 +48,7 @@ public:
   }
 
 private:
+  const Event::EventLoopTrackerFactory& factory_;
   std::atomic<uint64_t>& prepare_count_;
   std::atomic<uint64_t>& check_count_;
 };
@@ -54,7 +58,7 @@ public:
   std::unique_ptr<Event::EventLoopTracker> createTracker(const std::string&) override {
     ASSERT_IS_MAIN_OR_TEST_THREAD();
     created_trackers_++;
-    return std::make_unique<FakeEventLoopTracker>(prepare_count_, check_count_);
+    return std::make_unique<FakeEventLoopTracker>(*this, prepare_count_, check_count_);
   }
 
   void pollMetrics() {
@@ -187,6 +191,54 @@ TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeRegistration) {
 
   worker->stop();
   api_->eventLoopTrackerRegistry().unregisterTrackerFactory(dynamic_monitor_factory);
+}
+
+TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeUnregistration) {
+  TestWorkerFactory worker_factory(tls_, *api_, hooks_);
+  WorkerPtr worker =
+      worker_factory.createWorker(0, overload_manager_, overload_manager_, "worker_2");
+  ASSERT_NE(nullptr, worker_factory.worker_dispatcher_);
+
+  absl::Notification started;
+  Event::TimerPtr keepalive_timer;
+  worker->start(guard_dog_, [&worker_factory, &started, &keepalive_timer]() {
+    keepalive_timer = worker_factory.worker_dispatcher_->createTimer([]() {});
+    keepalive_timer->enableTimer(std::chrono::hours(1));
+    started.Notify();
+  });
+  started.WaitForNotification();
+
+  FakeResourceMonitorTrackerFactory dynamic_monitor_factory;
+  api_->eventLoopTrackerRegistry().registerTrackerFactory(dynamic_monitor_factory);
+  EXPECT_EQ(1, dynamic_monitor_factory.created_trackers_.load());
+
+  cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);
+  dynamic_monitor_factory.pollMetrics();
+
+  // Unregister the factory while the worker thread is still actively running.
+  api_->eventLoopTrackerRegistry().unregisterTrackerFactory(dynamic_monitor_factory);
+
+  // Cycle the event loop to ensure the unregister callback has run on the worker thread.
+  cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);
+
+  const uint64_t prepare_count_after_unregister = dynamic_monitor_factory.prepare_count_.load();
+  const uint64_t check_count_after_unregister = dynamic_monitor_factory.check_count_.load();
+
+  // Cycle multiple times to confirm callbacks are no longer firing on the worker thread.
+  cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);
+  cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);
+
+  EXPECT_EQ(prepare_count_after_unregister, dynamic_monitor_factory.prepare_count_.load());
+  EXPECT_EQ(check_count_after_unregister, dynamic_monitor_factory.check_count_.load());
+
+  absl::Notification stopped_timer;
+  worker_factory.worker_dispatcher_->post([&keepalive_timer, &stopped_timer]() {
+    keepalive_timer.reset();
+    stopped_timer.Notify();
+  });
+  stopped_timer.WaitForNotification();
+
+  worker->stop();
 }
 
 } // namespace

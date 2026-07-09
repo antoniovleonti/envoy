@@ -1,5 +1,7 @@
 #include "source/common/event/libevent_scheduler.h"
 
+#include <algorithm>
+
 #include "source/common/common/assert.h"
 #include "source/common/event/schedulable_cb_impl.h"
 #include "source/common/event/timer_impl.h"
@@ -173,11 +175,21 @@ void LibeventScheduler::registerEventLoopTracker(std::unique_ptr<EventLoopTracke
   if (tracker == nullptr) {
     return;
   }
-  if (event_loop_trackers_.empty()) {
+  if (!evwatch_trackers_registered_) {
+    evwatch_trackers_registered_ = true;
     evwatch_prepare_new(libevent_.get(), &onPrepareForTracker, this);
     evwatch_check_new(libevent_.get(), &onCheckForTracker, this);
   }
   event_loop_trackers_.push_back(std::move(tracker));
+}
+
+void LibeventScheduler::unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) {
+  event_loop_trackers_.erase(
+      std::remove_if(event_loop_trackers_.begin(), event_loop_trackers_.end(),
+                     [&factory](const std::unique_ptr<EventLoopTracker>& tracker) {
+                       return &tracker->factory() == &factory;
+                     }),
+      event_loop_trackers_.end());
 }
 
 } // namespace Event

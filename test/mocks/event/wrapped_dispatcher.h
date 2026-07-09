@@ -29,6 +29,9 @@ public:
   void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override {
     impl_.registerEventLoopTracker(std::move(tracker));
   }
+  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) override {
+    impl_.unregisterEventLoopTracker(factory);
+  }
 
   TimeSource& timeSource() override { return impl_.timeSource(); }
 

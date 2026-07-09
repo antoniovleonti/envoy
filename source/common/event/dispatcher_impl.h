@@ -53,6 +53,7 @@ public:
   ~DispatcherImpl() override;
 
   void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override;
+  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) override;
 
   /**
    * @return event_base& the libevent base.

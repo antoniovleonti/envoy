@@ -445,5 +445,9 @@ void DispatcherImpl::registerEventLoopTracker(std::unique_ptr<EventLoopTracker> 
   base_scheduler_.registerEventLoopTracker(std::move(tracker));
 }
 
+void DispatcherImpl::unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) {
+  base_scheduler_.unregisterEventLoopTracker(factory);
+}
+
 } // namespace Event
 } // namespace Envoy

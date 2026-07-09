@@ -27,6 +27,11 @@ void EventLoopTrackerRegistryImpl::unregisterTrackerFactory(EventLoopTrackerFact
   auto it = std::find(factories_.begin(), factories_.end(), &factory);
   if (it != factories_.end()) {
     factories_.erase(it);
+    for (auto* dispatcher : dispatchers_) {
+      dispatcher->post([disp = dispatcher, &factory]() {
+        disp->unregisterEventLoopTracker(factory);
+      });
+    }
   }
 }
 

@@ -119,6 +119,7 @@ public:
   MOCK_METHOD(void, registerWatchdog,
               (const Server::WatchDogSharedPtr&, std::chrono::milliseconds));
   MOCK_METHOD(void, registerEventLoopTracker, (std::unique_ptr<EventLoopTracker>));
+  MOCK_METHOD(void, unregisterEventLoopTracker, (const EventLoopTrackerFactory&));
   MOCK_METHOD(void, initializeStats, (Stats::Scope&, const absl::optional<std::string>&));
   MOCK_METHOD(void, clearDeferredDeleteList, ());
   MOCK_METHOD(Network::ServerConnection*, createServerConnection_, (StreamInfo::StreamInfo & info));

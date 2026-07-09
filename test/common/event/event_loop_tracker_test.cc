@@ -11,6 +11,7 @@
 
 using testing::_;
 using testing::Invoke;
+using testing::Ref;
 using testing::Return;
 using testing::StrictMock;
 
@@ -20,9 +21,15 @@ namespace {
 
 class MockEventLoopTracker : public EventLoopTracker {
 public:
+  explicit MockEventLoopTracker(const EventLoopTrackerFactory& factory) : factory_(factory) {}
+
+  const EventLoopTrackerFactory& factory() const override { return factory_; }
   MOCK_METHOD(void, reportPrepare,
               (uint64_t prepare_time_us, bool timeout_set, uint64_t timeout_us));
   MOCK_METHOD(void, reportCheck, (uint64_t check_time_us));
+
+private:
+  const EventLoopTrackerFactory& factory_;
 };
 
 class MockEventLoopTrackerFactory : public EventLoopTrackerFactory {
@@ -43,7 +50,7 @@ TEST(EventLoopTrackerRegistryTest, StaticBootstrapRegistration) {
   MockEventLoopTrackerFactory factory;
   StrictMock<MockDispatcher> dispatcher("worker_1");
 
-  auto mock_tracker = std::make_unique<MockEventLoopTracker>();
+  auto mock_tracker = std::make_unique<MockEventLoopTracker>(factory);
   MockEventLoopTracker* tracker_ptr = mock_tracker.get();
 
   EXPECT_CALL(factory, createTracker("worker_1"))
@@ -56,6 +63,11 @@ TEST(EventLoopTrackerRegistryTest, StaticBootstrapRegistration) {
   registry.registerTrackerFactory(factory);
   registry.registerDispatcher(dispatcher);
 
+  EXPECT_CALL(dispatcher, post(_)).WillOnce(Invoke([](PostCb cb) {
+    cb();
+  }));
+  EXPECT_CALL(dispatcher, unregisterEventLoopTracker(Ref(factory)));
+
   registry.unregisterTrackerFactory(factory);
   registry.unregisterDispatcher(dispatcher);
 }
@@ -67,7 +79,7 @@ TEST(EventLoopTrackerRegistryTest, DynamicRuntimeRegistration) {
 
   registry.registerDispatcher(dispatcher);
 
-  auto mock_tracker = std::make_unique<MockEventLoopTracker>();
+  auto mock_tracker = std::make_unique<MockEventLoopTracker>(factory);
   MockEventLoopTracker* tracker_ptr = mock_tracker.get();
 
   EXPECT_CALL(factory, createTracker("worker_2"))
@@ -86,6 +98,11 @@ TEST(EventLoopTrackerRegistryTest, DynamicRuntimeRegistration) {
         EXPECT_EQ(tracker_ptr, tracker.get());
       }));
   posted_cb();
+
+  EXPECT_CALL(dispatcher, post(_)).WillOnce(Invoke([](PostCb cb) {
+    cb();
+  }));
+  EXPECT_CALL(dispatcher, unregisterEventLoopTracker(Ref(factory)));
 
   registry.unregisterTrackerFactory(factory);
   registry.unregisterDispatcher(dispatcher);

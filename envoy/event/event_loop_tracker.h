@@ -10,6 +10,7 @@ namespace Envoy {
 namespace Event {
 
 class Dispatcher;
+class EventLoopTrackerFactory;
 
 /**
  * An interface for tracking timing and latency metrics across event loop iterations on worker
@@ -18,6 +19,13 @@ class Dispatcher;
 class EventLoopTracker {
 public:
   virtual ~EventLoopTracker() = default;
+
+  /**
+   * Returns the factory that created this tracker.
+   * Used when unregistering a factory to remove its associated trackers from dispatchers.
+   * @return const EventLoopTrackerFactory& the factory instance.
+   */
+  virtual const EventLoopTrackerFactory& factory() const = 0;
 
   /**
    * Called during epoll/event loop prepare phase (before sleeping/polling for events).

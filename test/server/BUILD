@@ -438,13 +438,13 @@ envoy_cc_test_library(
 )
 
 envoy_cc_test(
-    name = "event_loop_tracker_integration_test",
-    srcs = ["event_loop_tracker_integration_test.cc"],
+    name = "event_loop_integration_test",
+    srcs = ["event_loop_integration_test.cc"],
     rbe_pool = "6gig",
     deps = [
         "//source/common/api:api_lib",
         "//source/common/event:dispatcher_lib",
-        "//source/common/event:event_loop_tracker_lib",
+        "//source/common/event:event_loop_registry_lib",
         "//source/common/event:scaled_range_timer_manager_lib",
         "//source/common/thread_local:thread_local_lib",
         "//source/server:worker_lib",

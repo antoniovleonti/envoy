@@ -4,12 +4,12 @@
 #include <string>
 
 #include "envoy/api/api.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 #include "envoy/server/worker.h"
 
 #include "source/common/api/api_impl.h"
 #include "source/common/common/thread.h"
-#include "source/common/event/event_loop_tracker_registry.h"
+#include "source/common/event/event_loop_registry.h"
 #include "source/common/event/scaled_range_timer_manager_impl.h"
 #include "source/server/worker_impl.h"
 
@@ -29,13 +29,13 @@ namespace Envoy {
 namespace Server {
 namespace {
 
-class FakeEventLoopTracker : public Event::EventLoopTracker {
+class FakeEventLoopTracker : public Event::EventLoop::Tracker {
 public:
-  FakeEventLoopTracker(const Event::EventLoopTrackerFactory& factory,
+  FakeEventLoopTracker(const Event::EventLoop::TrackerFactory& factory,
                        std::atomic<uint64_t>& prepare_count, std::atomic<uint64_t>& check_count)
       : factory_(factory), prepare_count_(prepare_count), check_count_(check_count) {}
 
-  const Event::EventLoopTrackerFactory& factory() const override { return factory_; }
+  const Event::EventLoop::TrackerFactory& factory() const override { return factory_; }
 
   void reportPrepare(uint64_t, bool, uint64_t) override {
     ASSERT_IS_NOT_MAIN_OR_TEST_THREAD();
@@ -48,14 +48,14 @@ public:
   }
 
 private:
-  const Event::EventLoopTrackerFactory& factory_;
+  const Event::EventLoop::TrackerFactory& factory_;
   std::atomic<uint64_t>& prepare_count_;
   std::atomic<uint64_t>& check_count_;
 };
 
-class FakeResourceMonitorTrackerFactory : public Event::EventLoopTrackerFactory {
+class FakeResourceMonitorTrackerFactory : public Event::EventLoop::TrackerFactory {
 public:
-  std::unique_ptr<Event::EventLoopTracker> createTracker(const std::string&) override {
+  Event::EventLoop::TrackerPtr createTracker(const std::string&) override {
     ASSERT_IS_MAIN_OR_TEST_THREAD();
     created_trackers_++;
     return std::make_unique<FakeEventLoopTracker>(*this, prepare_count_, check_count_);
@@ -123,7 +123,7 @@ public:
 
 TEST_F(EventLoopTrackerIntegrationTest, StaticBootstrapRegistration) {
   FakeResourceMonitorTrackerFactory monitor_factory;
-  api_->eventLoopTrackerRegistry().registerTrackerFactory(monitor_factory);
+  auto handle = api_->eventLoopRegistry().registerTrackerFactory(monitor_factory);
 
   TestWorkerFactory worker_factory(tls_, *api_, hooks_);
   WorkerPtr worker =
@@ -152,7 +152,7 @@ TEST_F(EventLoopTrackerIntegrationTest, StaticBootstrapRegistration) {
   stopped_timer.WaitForNotification();
 
   worker->stop();
-  api_->eventLoopTrackerRegistry().unregisterTrackerFactory(monitor_factory);
+  handle.reset();
 }
 
 TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeRegistration) {
@@ -172,7 +172,7 @@ TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeRegistration) {
 
   // Register the factory AFTER the worker thread has already spawned and is running its event loop.
   FakeResourceMonitorTrackerFactory dynamic_monitor_factory;
-  api_->eventLoopTrackerRegistry().registerTrackerFactory(dynamic_monitor_factory);
+  auto handle = api_->eventLoopRegistry().registerTrackerFactory(dynamic_monitor_factory);
 
   EXPECT_EQ(1, dynamic_monitor_factory.created_trackers_.load());
 
@@ -190,7 +190,7 @@ TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeRegistration) {
   stopped_timer.WaitForNotification();
 
   worker->stop();
-  api_->eventLoopTrackerRegistry().unregisterTrackerFactory(dynamic_monitor_factory);
+  handle.reset();
 }
 
 TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeUnregistration) {
@@ -209,14 +209,14 @@ TEST_F(EventLoopTrackerIntegrationTest, DynamicRuntimeUnregistration) {
   started.WaitForNotification();
 
   FakeResourceMonitorTrackerFactory dynamic_monitor_factory;
-  api_->eventLoopTrackerRegistry().registerTrackerFactory(dynamic_monitor_factory);
+  auto handle = api_->eventLoopRegistry().registerTrackerFactory(dynamic_monitor_factory);
   EXPECT_EQ(1, dynamic_monitor_factory.created_trackers_.load());
 
   cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);
   dynamic_monitor_factory.pollMetrics();
 
-  // Unregister the factory while the worker thread is still actively running.
-  api_->eventLoopTrackerRegistry().unregisterTrackerFactory(dynamic_monitor_factory);
+  // Unregister the factory while the worker thread is still actively running via RAII handle reset!
+  handle.reset();
 
   // Cycle the event loop to ensure the unregister callback has run on the worker thread.
   cycleWorkerEventLoop(*worker_factory.worker_dispatcher_);

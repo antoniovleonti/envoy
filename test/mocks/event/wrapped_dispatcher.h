@@ -6,7 +6,7 @@
 #include <list>
 
 #include "envoy/event/dispatcher.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 
 namespace Envoy {
 namespace Event {
@@ -26,10 +26,10 @@ public:
     impl_.registerWatchdog(watchdog, min_touch_interval);
   }
 
-  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override {
+  void registerEventLoopTracker(EventLoop::TrackerPtr tracker) override {
     impl_.registerEventLoopTracker(std::move(tracker));
   }
-  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) override {
+  void unregisterEventLoopTracker(const EventLoop::TrackerFactory& factory) override {
     impl_.unregisterEventLoopTracker(factory);
   }
 

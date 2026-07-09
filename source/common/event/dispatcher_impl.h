@@ -11,7 +11,7 @@
 #include "envoy/common/time.h"
 #include "envoy/event/deferred_deletable.h"
 #include "envoy/event/dispatcher.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 #include "envoy/network/connection_handler.h"
 #include "envoy/stats/scope.h"
 
@@ -49,11 +49,11 @@ public:
                  Event::TimeSystem& time_system,
                  const ScaledRangeTimerManagerFactory& scaled_timer_factory,
                  const Buffer::WatermarkFactorySharedPtr& watermark_factory,
-                 EventLoopTrackerRegistry* event_loop_tracker_registry = nullptr);
+                 EventLoop::Registry* event_loop_registry = nullptr);
   ~DispatcherImpl() override;
 
-  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) override;
-  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) override;
+  void registerEventLoopTracker(EventLoop::TrackerPtr tracker) override;
+  void unregisterEventLoopTracker(const EventLoop::TrackerFactory& factory) override;
 
   /**
    * @return event_base& the libevent base.
@@ -178,7 +178,7 @@ private:
   bool deferred_deleting_{};
   MonotonicTime approximate_monotonic_time_;
   WatchdogRegistrationPtr watchdog_registration_;
-  EventLoopTrackerRegistry* event_loop_tracker_registry_{nullptr};
+  EventLoop::Registry::DispatcherHandlePtr dispatcher_handle_;
   const ScaledRangeTimerManagerPtr scaled_timer_manager_;
 };
 

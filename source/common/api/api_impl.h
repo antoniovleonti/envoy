@@ -10,7 +10,7 @@
 #include "envoy/network/socket.h"
 #include "envoy/thread/thread.h"
 
-#include "source/common/event/event_loop_tracker_registry.h"
+#include "source/common/event/event_loop_registry.h"
 #include "source/common/stats/custom_stat_namespaces_impl.h"
 
 namespace Envoy {
@@ -34,8 +34,8 @@ public:
                      const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) override;
   Event::DispatcherPtr allocateDispatcher(const std::string& name,
                                           Buffer::WatermarkFactoryPtr&& watermark_factory) override;
-  Event::EventLoopTrackerRegistry& eventLoopTrackerRegistry() override {
-    return event_loop_tracker_registry_;
+  Event::EventLoop::Registry& eventLoopRegistry() override {
+    return event_loop_registry_;
   }
   Thread::ThreadFactory& threadFactory() override { return thread_factory_; }
   Filesystem::Instance& fileSystem() override { return file_system_; }
@@ -56,7 +56,7 @@ private:
   Stats::CustomStatNamespacesImpl custom_stat_namespaces_;
   ProcessContextOptRef process_context_;
   const Buffer::WatermarkFactorySharedPtr watermark_factory_;
-  Event::EventLoopTrackerRegistryImpl event_loop_tracker_registry_;
+  Event::EventLoop::RegistryImpl event_loop_registry_;
 };
 
 } // namespace Api

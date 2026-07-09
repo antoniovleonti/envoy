@@ -28,10 +28,10 @@ envoy_cc_test(
 )
 
 envoy_cc_test(
-    name = "event_loop_tracker_test",
-    srcs = ["event_loop_tracker_test.cc"],
+    name = "event_loop_test",
+    srcs = ["event_loop_test.cc"],
     deps = [
-        "//source/common/event:event_loop_tracker_lib",
+        "//source/common/event:event_loop_registry_lib",
         "//test/mocks/event:event_mocks",
     ],
 )

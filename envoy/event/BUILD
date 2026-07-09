@@ -24,7 +24,7 @@ envoy_cc_library(
     deps = [
         ":deferred_deletable",
         ":dispatcher_thread_deletable",
-        ":event_loop_tracker_interface",
+        ":event_loop_interface",
         ":file_event_interface",
         ":scaled_timer",
         ":schedulable_cb_interface",
@@ -48,8 +48,8 @@ envoy_cc_library(
 )
 
 envoy_cc_library(
-    name = "event_loop_tracker_interface",
-    hdrs = ["event_loop_tracker.h"],
+    name = "event_loop_interface",
+    hdrs = ["event_loop.h"],
     deps = ["//envoy/common:pure_lib"],
 )
 

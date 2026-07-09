@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "envoy/event/dispatcher.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 #include "envoy/event/schedulable_cb.h"
 #include "envoy/event/timer.h"
 
@@ -64,8 +64,8 @@ public:
 
   LibeventScheduler();
 
-  void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker);
-  void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory);
+  void registerEventLoopTracker(EventLoop::TrackerPtr tracker);
+  void unregisterEventLoopTracker(const EventLoop::TrackerFactory& factory);
 
   // Scheduler
   TimerPtr createTimer(const TimerCb& cb, Dispatcher& dispatcher) override;
@@ -141,7 +141,7 @@ private:
   timeval check_time_{};     // timestamp immediately after polling
   OnPrepareCallback prepare_callback_; // callback to be called from onPrepareForCallback()
   OnCheckCallback check_callback_;     // callback to be called from onCheckForCallback()
-  std::vector<std::unique_ptr<EventLoopTracker>> event_loop_trackers_;
+  std::vector<EventLoop::TrackerPtr> event_loop_trackers_;
   bool evwatch_trackers_registered_{false};
 };
 

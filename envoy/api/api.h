@@ -7,7 +7,7 @@
 #include "envoy/common/time.h"
 #include "envoy/config/bootstrap/v3/bootstrap.pb.h"
 #include "envoy/event/dispatcher.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 #include "envoy/event/scaled_range_timer_manager.h"
 #include "envoy/filesystem/filesystem.h"
 #include "envoy/server/process_context.h"
@@ -58,9 +58,9 @@ public:
   allocateDispatcher(const std::string& name, Buffer::WatermarkFactoryPtr&& watermark_factory) PURE;
 
   /**
-   * @return a reference to the Event::EventLoopTrackerRegistry for dispatchers.
+   * @return a reference to the Event::EventLoop::Registry for dispatchers.
    */
-  virtual Event::EventLoopTrackerRegistry& eventLoopTrackerRegistry() = 0;
+  virtual Event::EventLoop::Registry& eventLoopRegistry() = 0;
 
   /**
    * @return a reference to the ThreadFactory

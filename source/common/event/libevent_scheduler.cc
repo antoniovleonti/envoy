@@ -171,7 +171,7 @@ void LibeventScheduler::onCheckForTracker(evwatch*, const evwatch_check_cb_info*
   }
 }
 
-void LibeventScheduler::registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) {
+void LibeventScheduler::registerEventLoopTracker(EventLoop::TrackerPtr tracker) {
   if (tracker == nullptr) {
     return;
   }
@@ -183,10 +183,10 @@ void LibeventScheduler::registerEventLoopTracker(std::unique_ptr<EventLoopTracke
   event_loop_trackers_.push_back(std::move(tracker));
 }
 
-void LibeventScheduler::unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) {
+void LibeventScheduler::unregisterEventLoopTracker(const EventLoop::TrackerFactory& factory) {
   event_loop_trackers_.erase(
       std::remove_if(event_loop_trackers_.begin(), event_loop_trackers_.end(),
-                     [&factory](const std::unique_ptr<EventLoopTracker>& tracker) {
+                     [&factory](const EventLoop::TrackerPtr& tracker) {
                        return &tracker->factory() == &factory;
                      }),
       event_loop_trackers_.end());

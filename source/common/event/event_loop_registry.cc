@@ -1,4 +1,4 @@
-#include "source/common/event/event_loop_tracker_registry.h"
+#include "source/common/event/event_loop_registry.h"
 
 #include <algorithm>
 
@@ -6,23 +6,24 @@
 
 namespace Envoy {
 namespace Event {
+namespace EventLoop {
 
-void EventLoopTrackerRegistryImpl::registerTrackerFactory(EventLoopTrackerFactory& factory) {
+Registry::TrackerFactoryHandlePtr RegistryImpl::registerTrackerFactory(TrackerFactory& factory) {
   absl::MutexLock lock(&mutex_);
-  if (std::find(factories_.begin(), factories_.end(), &factory) != factories_.end()) {
-    return;
-  }
-  factories_.push_back(&factory);
-  for (auto* dispatcher : dispatchers_) {
-    if (auto tracker = factory.createTracker(dispatcher->name()); tracker != nullptr) {
-      dispatcher->post([disp = dispatcher, t = std::move(tracker)]() mutable {
-        disp->registerEventLoopTracker(std::move(t));
-      });
+  if (std::find(factories_.begin(), factories_.end(), &factory) == factories_.end()) {
+    factories_.push_back(&factory);
+    for (auto* dispatcher : dispatchers_) {
+      if (auto tracker = factory.createTracker(dispatcher->name()); tracker != nullptr) {
+        dispatcher->post([disp = dispatcher, t = std::move(tracker)]() mutable {
+          disp->registerEventLoopTracker(std::move(t));
+        });
+      }
     }
   }
+  return std::make_unique<TrackerFactoryHandleImpl>(*this, factory);
 }
 
-void EventLoopTrackerRegistryImpl::unregisterTrackerFactory(EventLoopTrackerFactory& factory) {
+void RegistryImpl::removeTrackerFactory(TrackerFactory& factory) {
   absl::MutexLock lock(&mutex_);
   auto it = std::find(factories_.begin(), factories_.end(), &factory);
   if (it != factories_.end()) {
@@ -35,7 +36,7 @@ void EventLoopTrackerRegistryImpl::unregisterTrackerFactory(EventLoopTrackerFact
   }
 }
 
-void EventLoopTrackerRegistryImpl::registerDispatcher(Dispatcher& dispatcher) {
+Registry::DispatcherHandlePtr RegistryImpl::registerDispatcher(Dispatcher& dispatcher) {
   absl::MutexLock lock(&mutex_);
   if (std::find(dispatchers_.begin(), dispatchers_.end(), &dispatcher) == dispatchers_.end()) {
     dispatchers_.push_back(&dispatcher);
@@ -45,9 +46,10 @@ void EventLoopTrackerRegistryImpl::registerDispatcher(Dispatcher& dispatcher) {
       }
     }
   }
+  return std::make_unique<DispatcherHandleImpl>(*this, dispatcher);
 }
 
-void EventLoopTrackerRegistryImpl::unregisterDispatcher(Dispatcher& dispatcher) {
+void RegistryImpl::removeDispatcher(Dispatcher& dispatcher) {
   absl::MutexLock lock(&mutex_);
   auto it = std::find(dispatchers_.begin(), dispatchers_.end(), &dispatcher);
   if (it != dispatchers_.end()) {
@@ -55,5 +57,6 @@ void EventLoopTrackerRegistryImpl::unregisterDispatcher(Dispatcher& dispatcher) 
   }
 }
 
+} // namespace EventLoop
 } // namespace Event
 } // namespace Envoy

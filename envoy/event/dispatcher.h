@@ -11,7 +11,7 @@
 #include "envoy/config/core/v3/resolver.pb.h"
 #include "envoy/config/core/v3/udp_socket_config.pb.h"
 #include "envoy/event/dispatcher_thread_deletable.h"
-#include "envoy/event/event_loop_tracker.h"
+#include "envoy/event/event_loop.h"
 #include "envoy/event/file_event.h"
 #include "envoy/event/scaled_timer.h"
 #include "envoy/event/schedulable_cb.h"
@@ -168,18 +168,18 @@ public:
                                 std::chrono::milliseconds min_touch_interval) PURE;
 
   /**
-   * Register an EventLoopTracker to receive prepare and check callbacks on this dispatcher's
+   * Register an EventLoop::Tracker to receive prepare and check callbacks on this dispatcher's
    * event loop. Must be called on the dispatcher's thread or via post().
    * @param tracker the tracker to register.
    */
-  virtual void registerEventLoopTracker(std::unique_ptr<EventLoopTracker> tracker) = 0;
+  virtual void registerEventLoopTracker(EventLoop::TrackerPtr tracker) = 0;
 
   /**
-   * Unregister any EventLoopTracker created by the given factory from this dispatcher's
+   * Unregister any EventLoop::Tracker created by the given factory from this dispatcher's
    * event loop. Must be called on the dispatcher's thread or via post().
    * @param factory the factory whose trackers should be unregistered and destroyed.
    */
-  virtual void unregisterEventLoopTracker(const EventLoopTrackerFactory& factory) = 0;
+  virtual void unregisterEventLoopTracker(const EventLoop::TrackerFactory& factory) = 0;
 
   /**
    * Returns a time-source to use with this dispatcher.

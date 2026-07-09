@@ -15,7 +15,7 @@
 #include "source/common/api/os_sys_calls_impl_linux.h"
 #endif
 
-#include "source/common/event/event_loop_tracker_registry.h"
+#include "source/common/event/event_loop_registry.h"
 
 #include "test/mocks/common.h"
 #include "test/mocks/filesystem/mocks.h"
@@ -39,8 +39,8 @@ public:
                      const Event::ScaledRangeTimerManagerFactory& scaled_timer_factory) override;
   Event::DispatcherPtr allocateDispatcher(const std::string& name,
                                           Buffer::WatermarkFactoryPtr&& watermark_factory) override;
-  Event::EventLoopTrackerRegistry& eventLoopTrackerRegistry() override {
-    return event_loop_tracker_registry_;
+  Event::EventLoop::Registry& eventLoopRegistry() override {
+    return event_loop_registry_;
   }
   TimeSource& timeSource() override { return time_system_; }
 
@@ -62,7 +62,7 @@ public:
   testing::NiceMock<Stats::MockIsolatedStatsStore> stats_store_;
   testing::NiceMock<Random::MockRandomGenerator> random_;
   envoy::config::bootstrap::v3::Bootstrap empty_bootstrap_;
-  Event::EventLoopTrackerRegistryImpl event_loop_tracker_registry_;
+  Event::EventLoop::RegistryImpl event_loop_registry_;
 };
 
 class MockOsSysCalls : public OsSysCallsImpl {

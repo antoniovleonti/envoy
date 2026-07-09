@@ -51,7 +51,7 @@ private:
 
 class FakeResourceMonitorTrackerFactory : public Event::EventLoopTrackerFactory {
 public:
-  std::unique_ptr<Event::EventLoopTracker> createWorkerTracker(const std::string&) override {
+  std::unique_ptr<Event::EventLoopTracker> createTracker(const std::string&) override {
     ASSERT_IS_MAIN_OR_TEST_THREAD();
     created_trackers_++;
     return std::make_unique<FakeEventLoopTracker>(prepare_count_, check_count_);
@@ -76,7 +76,7 @@ public:
 
   WorkerPtr createWorker(uint32_t, OverloadManager& overload_manager, OverloadManager&,
                          const std::string& worker_name) override {
-    auto disp = api_.allocateWorkerDispatcher(worker_name, overload_manager.scaledTimerFactory());
+    auto disp = api_.allocateDispatcher(worker_name, overload_manager.scaledTimerFactory());
     worker_dispatcher_ = disp.get();
     auto conn_handler =
         Network::ConnectionHandlerPtr{new NiceMock<Network::MockConnectionHandler>()};

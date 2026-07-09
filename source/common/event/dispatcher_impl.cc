@@ -88,14 +88,14 @@ DispatcherImpl::DispatcherImpl(const std::string& name, Thread::ThreadFactory& t
   base_scheduler_.registerOnCheckCallback(
       std::bind(&DispatcherImpl::updateApproximateMonotonicTime, this));
   if (event_loop_tracker_registry_ != nullptr) {
-    event_loop_tracker_registry_->registerWorkerDispatcher(*this);
+    event_loop_tracker_registry_->registerDispatcher(*this);
   }
 }
 
 DispatcherImpl::~DispatcherImpl() {
   ENVOY_LOG(debug, "destroying dispatcher {}", name_);
   if (event_loop_tracker_registry_ != nullptr) {
-    event_loop_tracker_registry_->unregisterWorkerDispatcher(*this);
+    event_loop_tracker_registry_->unregisterDispatcher(*this);
   }
   FatalErrorHandler::removeFatalErrorHandler(*this);
   // TODO(lambdai): Resolve https://github.com/envoyproxy/envoy/issues/15072 and enable

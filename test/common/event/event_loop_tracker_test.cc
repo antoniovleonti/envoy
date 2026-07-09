@@ -27,7 +27,7 @@ public:
 
 class MockEventLoopTrackerFactory : public EventLoopTrackerFactory {
 public:
-  MOCK_METHOD(std::unique_ptr<EventLoopTracker>, createWorkerTracker, (const std::string&));
+  MOCK_METHOD(std::unique_ptr<EventLoopTracker>, createTracker, (const std::string&));
 };
 
 TEST(EventLoopTrackerRegistryTest, EmptyRegistryDoesNothing) {
@@ -35,7 +35,7 @@ TEST(EventLoopTrackerRegistryTest, EmptyRegistryDoesNothing) {
   StrictMock<MockDispatcher> dispatcher("worker_0");
 
   EXPECT_CALL(dispatcher, registerEventLoopTracker(_)).Times(0);
-  registry.registerWorkerDispatcher(dispatcher);
+  registry.registerDispatcher(dispatcher);
 }
 
 TEST(EventLoopTrackerRegistryTest, StaticBootstrapRegistration) {
@@ -46,7 +46,7 @@ TEST(EventLoopTrackerRegistryTest, StaticBootstrapRegistration) {
   auto mock_tracker = std::make_unique<MockEventLoopTracker>();
   MockEventLoopTracker* tracker_ptr = mock_tracker.get();
 
-  EXPECT_CALL(factory, createWorkerTracker("worker_1"))
+  EXPECT_CALL(factory, createTracker("worker_1"))
       .WillOnce(Return(testing::ByMove(std::move(mock_tracker))));
   EXPECT_CALL(dispatcher, registerEventLoopTracker(_))
       .WillOnce(Invoke([tracker_ptr](std::unique_ptr<EventLoopTracker> tracker) {
@@ -54,10 +54,10 @@ TEST(EventLoopTrackerRegistryTest, StaticBootstrapRegistration) {
       }));
 
   registry.registerTrackerFactory(factory);
-  registry.registerWorkerDispatcher(dispatcher);
+  registry.registerDispatcher(dispatcher);
 
   registry.unregisterTrackerFactory(factory);
-  registry.unregisterWorkerDispatcher(dispatcher);
+  registry.unregisterDispatcher(dispatcher);
 }
 
 TEST(EventLoopTrackerRegistryTest, DynamicRuntimeRegistration) {
@@ -65,12 +65,12 @@ TEST(EventLoopTrackerRegistryTest, DynamicRuntimeRegistration) {
   MockEventLoopTrackerFactory factory;
   StrictMock<MockDispatcher> dispatcher("worker_2");
 
-  registry.registerWorkerDispatcher(dispatcher);
+  registry.registerDispatcher(dispatcher);
 
   auto mock_tracker = std::make_unique<MockEventLoopTracker>();
   MockEventLoopTracker* tracker_ptr = mock_tracker.get();
 
-  EXPECT_CALL(factory, createWorkerTracker("worker_2"))
+  EXPECT_CALL(factory, createTracker("worker_2"))
       .WillOnce(Return(testing::ByMove(std::move(mock_tracker))));
 
   PostCb posted_cb;
@@ -88,18 +88,18 @@ TEST(EventLoopTrackerRegistryTest, DynamicRuntimeRegistration) {
   posted_cb();
 
   registry.unregisterTrackerFactory(factory);
-  registry.unregisterWorkerDispatcher(dispatcher);
+  registry.unregisterDispatcher(dispatcher);
 }
 
-TEST(EventLoopTrackerRegistryTest, UnregisterWorkerDispatcher) {
+TEST(EventLoopTrackerRegistryTest, UnregisterDispatcher) {
   EventLoopTrackerRegistryImpl registry;
   MockEventLoopTrackerFactory factory;
   StrictMock<MockDispatcher> dispatcher("worker_3");
 
-  registry.registerWorkerDispatcher(dispatcher);
-  registry.unregisterWorkerDispatcher(dispatcher);
+  registry.registerDispatcher(dispatcher);
+  registry.unregisterDispatcher(dispatcher);
 
-  EXPECT_CALL(factory, createWorkerTracker(_)).Times(0);
+  EXPECT_CALL(factory, createTracker(_)).Times(0);
   EXPECT_CALL(dispatcher, post(_)).Times(0);
 
   registry.registerTrackerFactory(factory);

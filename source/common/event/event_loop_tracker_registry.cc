@@ -13,8 +13,8 @@ void EventLoopTrackerRegistryImpl::registerTrackerFactory(EventLoopTrackerFactor
     return;
   }
   factories_.push_back(&factory);
-  for (auto* dispatcher : worker_dispatchers_) {
-    if (auto tracker = factory.createWorkerTracker(dispatcher->name()); tracker != nullptr) {
+  for (auto* dispatcher : dispatchers_) {
+    if (auto tracker = factory.createTracker(dispatcher->name()); tracker != nullptr) {
       dispatcher->post([disp = dispatcher, t = std::move(tracker)]() mutable {
         disp->registerEventLoopTracker(std::move(t));
       });
@@ -30,24 +30,23 @@ void EventLoopTrackerRegistryImpl::unregisterTrackerFactory(EventLoopTrackerFact
   }
 }
 
-void EventLoopTrackerRegistryImpl::registerWorkerDispatcher(Dispatcher& dispatcher) {
+void EventLoopTrackerRegistryImpl::registerDispatcher(Dispatcher& dispatcher) {
   absl::MutexLock lock(&mutex_);
-  if (std::find(worker_dispatchers_.begin(), worker_dispatchers_.end(), &dispatcher) ==
-      worker_dispatchers_.end()) {
-    worker_dispatchers_.push_back(&dispatcher);
+  if (std::find(dispatchers_.begin(), dispatchers_.end(), &dispatcher) == dispatchers_.end()) {
+    dispatchers_.push_back(&dispatcher);
     for (auto* factory : factories_) {
-      if (auto tracker = factory->createWorkerTracker(dispatcher.name()); tracker != nullptr) {
+      if (auto tracker = factory->createTracker(dispatcher.name()); tracker != nullptr) {
         dispatcher.registerEventLoopTracker(std::move(tracker));
       }
     }
   }
 }
 
-void EventLoopTrackerRegistryImpl::unregisterWorkerDispatcher(Dispatcher& dispatcher) {
+void EventLoopTrackerRegistryImpl::unregisterDispatcher(Dispatcher& dispatcher) {
   absl::MutexLock lock(&mutex_);
-  auto it = std::find(worker_dispatchers_.begin(), worker_dispatchers_.end(), &dispatcher);
-  if (it != worker_dispatchers_.end()) {
-    worker_dispatchers_.erase(it);
+  auto it = std::find(dispatchers_.begin(), dispatchers_.end(), &dispatcher);
+  if (it != dispatchers_.end()) {
+    dispatchers_.erase(it);
   }
 }
 

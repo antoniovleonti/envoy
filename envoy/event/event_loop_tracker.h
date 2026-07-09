@@ -35,35 +35,35 @@ public:
 };
 
 /**
- * Factory interface for creating worker thread EventLoopTracker instances.
+ * Factory interface for creating EventLoopTracker instances for dispatchers.
  * Subsystems (such as resource monitors or profiling modules) implement this to receive event
- * loop callbacks on worker threads.
+ * loop callbacks on event loop threads.
  */
 class EventLoopTrackerFactory {
 public:
   virtual ~EventLoopTrackerFactory() = default;
 
   /**
-   * Creates a new EventLoopTracker for a given worker dispatcher.
-   * Called on the main thread when a worker dispatcher is allocated.
-   * @param dispatcher_name the name of the worker dispatcher being created.
-   * @return std::unique_ptr<EventLoopTracker> the tracker for this worker thread, or nullptr if
+   * Creates a new EventLoopTracker for a given dispatcher.
+   * Called on the main thread when a dispatcher is allocated or a factory is registered.
+   * @param dispatcher_name the name of the dispatcher being created.
+   * @return std::unique_ptr<EventLoopTracker> the tracker for this thread, or nullptr if
    * disabled.
    */
   virtual std::unique_ptr<EventLoopTracker>
-  createWorkerTracker(const std::string& dispatcher_name) = 0;
+  createTracker(const std::string& dispatcher_name) = 0;
 };
 
 /**
- * Registry for managing EventLoopTrackerFactory registrations and instantiating trackers for worker
- * threads. This is accessible via Api::Api::eventLoopTrackerRegistry().
+ * Registry for managing EventLoopTrackerFactory registrations and instantiating trackers for
+ * dispatchers. This is accessible via Api::Api::eventLoopTrackerRegistry().
  */
 class EventLoopTrackerRegistry {
 public:
   virtual ~EventLoopTrackerRegistry() = default;
 
   /**
-   * Registers a factory to receive worker tracker creation calls.
+   * Registers a factory to receive tracker creation calls.
    * @param factory the factory to register.
    */
   virtual void registerTrackerFactory(EventLoopTrackerFactory& factory) = 0;
@@ -75,17 +75,17 @@ public:
   virtual void unregisterTrackerFactory(EventLoopTrackerFactory& factory) = 0;
 
   /**
-   * Registers an active worker dispatcher so that existing and future tracker factories
+   * Registers an active dispatcher so that existing and future tracker factories
    * can create and attach trackers to its event loop.
-   * @param dispatcher the worker dispatcher to register.
+   * @param dispatcher the dispatcher to register.
    */
-  virtual void registerWorkerDispatcher(Dispatcher& dispatcher) = 0;
+  virtual void registerDispatcher(Dispatcher& dispatcher) = 0;
 
   /**
-   * Unregisters a worker dispatcher when it is terminating.
-   * @param dispatcher the worker dispatcher to unregister.
+   * Unregisters a dispatcher when it is terminating.
+   * @param dispatcher the dispatcher to unregister.
    */
-  virtual void unregisterWorkerDispatcher(Dispatcher& dispatcher) = 0;
+  virtual void unregisterDispatcher(Dispatcher& dispatcher) = 0;
 };
 
 } // namespace Event

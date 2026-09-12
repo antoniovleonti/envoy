@@ -332,6 +332,7 @@ envoy_cc_test(
         "//source/extensions/resource_monitors/common:factory_base_lib",
         "//source/server:null_overload_manager_lib",
         "//source/server:overload_manager_lib",
+        "//test/mocks:common_lib",
         "//test/mocks/event:event_mocks",
         "//test/mocks/protobuf:protobuf_mocks",
         "//test/mocks/runtime:runtime_mocks",

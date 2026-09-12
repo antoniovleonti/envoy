@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <vector>
 
 #include "envoy/api/api.h"
@@ -35,6 +36,9 @@ public:
   // Updates the current value of the metric and returns whether the trigger has changed state.
   virtual bool updateValue(double value) PURE;
 
+  // Evaluates the action state for the given metric value without modifying trigger state.
+  virtual OverloadActionState evaluate(double value) const = 0;
+
   // Returns the action state for the trigger.
   virtual OverloadActionState actionState() const PURE;
 };
@@ -62,6 +66,10 @@ private:
   Stats::Gauge& scale_percent_gauge_;
 };
 
+using RealtimeResourceMonitorSharedPtr = std::shared_ptr<RealtimeResourceMonitor>;
+using RealtimeResourceMonitorMap =
+    absl::node_hash_map<std::string, RealtimeResourceMonitorSharedPtr>;
+
 /**
  * Implement a LoadShedPoint which is a particular point in the connection /
  * request lifecycle where we can either abort or continue the given work.
@@ -70,7 +78,8 @@ class LoadShedPointImpl : public LoadShedPoint {
 public:
   static absl::StatusOr<std::unique_ptr<LoadShedPointImpl>>
   create(const envoy::config::overload::v3::LoadShedPoint& config, Stats::Scope& stats_scope,
-         Random::RandomGenerator& random_generator);
+         Random::RandomGenerator& random_generator,
+         const RealtimeResourceMonitorMap& realtime_resources);
   LoadShedPointImpl(const LoadShedPointImpl&) = delete;
   LoadShedPointImpl& operator=(const LoadShedPointImpl&) = delete;
 
@@ -86,15 +95,28 @@ public:
   void updateResource(absl::string_view resource_name, double resource_utilization);
 
 private:
+  struct RealtimeTrigger {
+    const Trigger& trigger_;
+    RealtimeResourceMonitor& monitor_;
+  };
+
   LoadShedPointImpl(const envoy::config::overload::v3::LoadShedPoint& config,
                     Stats::Scope& stats_scope, Random::RandomGenerator& random_generator,
+                    const RealtimeResourceMonitorMap& realtime_resources,
                     absl::Status& creation_status);
   using TriggerPtr = std::unique_ptr<Trigger>;
+
+  struct TriggerEntry {
+    TriggerPtr trigger_;
+    RealtimeResourceMonitorOptRef realtime_monitor_;
+  };
 
   // Helper to handle updating the probability to shed load given the triggers.
   void updateProbabilityShedLoad();
 
-  absl::flat_hash_map<std::string, TriggerPtr> triggers_;
+  const std::string name_;
+  absl::flat_hash_map<std::string, TriggerEntry> triggers_;
+  std::vector<RealtimeTrigger> realtime_triggers_;
   std::atomic<float> probability_shed_load_{0};
   Stats::Gauge& scale_percent_;
   Stats::Counter& shed_load_counter_;
@@ -189,8 +211,8 @@ private:
   using FlushEpochId = uint64_t;
   class Resource : public ResourceUpdateCallbacks {
   public:
-    Resource(const std::string& name, ResourceMonitorPtr monitor, OverloadManagerImpl& manager,
-             Stats::Scope& stats_scope);
+    Resource(const std::string& name, std::shared_ptr<ResourceMonitor> monitor,
+             OverloadManagerImpl& manager, Stats::Scope& stats_scope);
 
     // ResourceMonitor::ResourceUpdateCallbacks
     void onSuccess(const ResourceUsage& usage) override;
@@ -200,7 +222,7 @@ private:
 
   private:
     const std::string name_;
-    ResourceMonitorPtr monitor_;
+    std::shared_ptr<ResourceMonitor> monitor_;
     OverloadManagerImpl& manager_;
     bool pending_update_{false};
     FlushEpochId flush_epoch_;
@@ -234,6 +256,7 @@ private:
   MonotonicTime time_resources_last_measured_;
   Event::TimerPtr timer_;
   absl::node_hash_map<std::string, Resource> resources_;
+  RealtimeResourceMonitorMap realtime_resources_;
   std::shared_ptr<absl::node_hash_map<OverloadProactiveResourceName, ProactiveResource>>
       proactive_resources_;
 

@@ -42,6 +42,10 @@ public:
   // Returns the action state for the trigger.
   virtual OverloadActionState actionState() const PURE;
 };
+using TriggerPtr = std::unique_ptr<Trigger>;
+
+absl::StatusOr<TriggerPtr>
+createTriggerFromConfig(const envoy::config::overload::v3::Trigger& trigger_config);
 
 class OverloadAction {
 public:
@@ -59,7 +63,6 @@ private:
   OverloadAction(const envoy::config::overload::v3::OverloadAction& config,
                  Stats::Scope& stats_scope, absl::Status& creation_status);
 
-  using TriggerPtr = std::unique_ptr<Trigger>;
   absl::node_hash_map<std::string, TriggerPtr> triggers_;
   OverloadActionState state_;
   Stats::Gauge& active_gauge_;
@@ -104,7 +107,6 @@ private:
                     Stats::Scope& stats_scope, Random::RandomGenerator& random_generator,
                     const RealtimeResourceMonitorMap& realtime_resources,
                     absl::Status& creation_status);
-  using TriggerPtr = std::unique_ptr<Trigger>;
 
   struct TriggerEntry {
     TriggerPtr trigger_;
@@ -266,6 +268,8 @@ private:
   absl::flat_hash_map<std::string, std::unique_ptr<LoadShedPointImpl>> loadshed_points_;
 
   Event::ScaledTimerTypeMapConstSharedPtr timer_minimums_;
+  absl::flat_hash_map<std::string, Event::ScaledTimerTypeMapConstSharedPtr>
+      timer_minimums_by_action_;
 
   absl::flat_hash_map<NamedOverloadActionSymbolTable::Symbol, OverloadActionState>
       state_updates_to_flush_;
